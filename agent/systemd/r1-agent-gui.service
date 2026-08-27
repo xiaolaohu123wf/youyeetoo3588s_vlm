@@ -1,0 +1,25 @@
+[Unit]
+Description=R1 voice assistant GUI (Chromium kiosk)
+After=gdm.service r1-orchestrator.service
+Wants=gdm.service r1-orchestrator.service
+# Do not block boot if orchestrator is slow; open_agent_gui waits internally.
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=youyeetoo
+Group=youyeetoo
+Environment=AGENT_ROOT=/userdata/agent
+Environment=DISPLAY=:0
+Environment=HOME=/home/youyeetoo
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+WorkingDirectory=/userdata/agent
+ExecStartPre=/bin/sleep 8
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 120); do pgrep -u youyeetoo -x gnome-shell >/dev/null && exit 0; sleep 1; done; exit 1'
+ExecStart=/bin/bash /userdata/agent/scripts/autostart_agent_gui.sh
+TimeoutStartSec=300
+
+[Install]
+WantedBy=graphical.target

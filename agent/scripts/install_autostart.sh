@@ -62,18 +62,24 @@ bash "${AGENT_ROOT}/scripts/scale_desktop_icons.sh" "${USER_NAME}" 128 2.25 || t
 # Tech-style wallpaper
 bash "${AGENT_ROOT}/scripts/set_tech_wallpaper.sh" "${USER_NAME}" || true
 
-# GUI autostart on login
-install -m 644 "${AGENT_ROOT}/scripts/xiaolan-gui-autostart.desktop" \
+# GUI autostart on login (GNOME) + systemd fallback
+install -m 755 "${AGENT_ROOT}/scripts/xiaolan-gui-autostart.desktop" \
   "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop"
 chown "${USER_NAME}:${USER_NAME}" "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop" 2>/dev/null || true
 
+install -m 644 "${AGENT_ROOT}/systemd/r1-agent-gui.service" /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable r1-agent-gui.service
+systemctl restart r1-agent-gui.service || true
+
 systemctl --no-pager status r1-llm-daemon.service --lines=3 || true
 systemctl --no-pager status r1-orchestrator.service --lines=3 || true
+systemctl --no-pager status r1-agent-gui.service --lines=3 || true
 
 echo ""
 echo "[install] done"
 echo "  后台服务: systemctl status r1-llm-daemon r1-orchestrator"
 echo "  桌面图标: ${DESKTOP_DIR}/xiaolan-agent.desktop"
-echo "  开机自启: systemd 语音服务 + 登录后自动打开 GUI"
+echo "  开机自启: systemd 语音服务 + r1-agent-gui + GNOME autostart"
 echo "  壁纸: ${AGENT_ROOT}/ui/wallpaper.svg"
 echo "  打开 GUI: 双击桌面「小揽语音助手」"
