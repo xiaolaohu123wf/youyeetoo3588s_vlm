@@ -26,6 +26,8 @@ class AudioProfile:
     pasuspender: bool = False
     mic_capture_gain: int = 6
     playback_env: dict[str, str] = field(default_factory=dict)
+    vad_overrides: dict[str, Any] = field(default_factory=dict)
+    usb_mic_volume: int | None = None
 
     def play_script_path(self) -> Path:
         return VOICE_SCRIPTS / self.play_script
@@ -84,12 +86,27 @@ def detect_fy_sp701_card() -> int | None:
     return None
 
 
+def _merge_profile_defaults(profile_id: str, raw: dict[str, Any] | None) -> dict[str, Any]:
+    base = dict(BOARD_DEFAULTS if profile_id == "board" else FY_SP701_DEFAULTS)
+    if raw:
+        merged = dict(base)
+        merged.update(raw)
+        if "vad" in raw and isinstance(raw["vad"], dict):
+            merged["vad"] = {**(base.get("vad") or {}), **raw["vad"]}
+        if "playback_env" in raw and isinstance(raw["playback_env"], dict):
+            merged["playback_env"] = {**(base.get("playback_env") or {}), **raw["playback_env"]}
+        return merged
+    return base
+
+
 def _profile_from_dict(profile_id: str, raw: dict[str, Any]) -> AudioProfile:
     card = detect_fy_sp701_card()
     device = str(raw.get("capture_device", "plughw:0,0"))
     if profile_id == "fy_sp701" and card is not None:
         device = f"plughw:{card},0"
     playback_env = raw.get("playback_env") or {}
+    vad_overrides = raw.get("vad") or raw.get("vad_overrides") or {}
+    usb_vol = raw.get("usb_mic_volume")
     return AudioProfile(
         profile_id=profile_id,
         label=str(raw.get("label", profile_id)),
@@ -102,6 +119,8 @@ def _profile_from_dict(profile_id: str, raw: dict[str, Any]) -> AudioProfile:
         pasuspender=str(raw.get("pasuspender", "false")).lower() in ("1", "true", "yes"),
         mic_capture_gain=int(raw.get("mic_capture_gain", 6)),
         playback_env={str(k): str(v) for k, v in playback_env.items()},
+        vad_overrides={str(k): v for k, v in vad_overrides.items()},
+        usb_mic_volume=int(usb_vol) if usb_vol is not None else None,
     )
 
 
@@ -131,6 +150,14 @@ FY_SP701_DEFAULTS: dict[str, Any] = {
         "VOICE_RESTORE_MIC": "0",
         "PLAYBACK_AGENT_TTS": "1",
     },
+    "usb_mic_volume": 20000,
+    "vad": {
+        "threshold": 0.58,
+        "min_silence_duration": 0.68,
+        "min_speech_duration": 0.22,
+        "speech_preroll_ms": 400,
+        "speech_tail_pad_ms": 350,
+    },
 }
 
 
@@ -149,8 +176,8 @@ class AudioProfileManager:
     ) -> AudioProfileManager:
         audio_cfg = cfg.get("audio") or {}
         profiles_raw = dict(audio_cfg.get("profiles") or {})
-        profiles_raw.setdefault("board", BOARD_DEFAULTS)
-        profiles_raw.setdefault("fy_sp701", FY_SP701_DEFAULTS)
+        profiles_raw["board"] = _merge_profile_defaults("board", profiles_raw.get("board"))
+        profiles_raw["fy_sp701"] = _merge_profile_defaults("fy_sp701", profiles_raw.get("fy_sp701"))
 
         settings_path = Path(
             audio_cfg.get("settings_path", str(agent_root / "run" / "user_settings.json"))
@@ -209,6 +236,32 @@ class AudioProfileManager:
         vad_cfg.mic_arm = self.active.mic_arm
         vad_cfg.route_guard = self.active.route_guard
         vad_cfg.pasuspender = self.active.pasuspender
+        for key, val in self.active.vad_overrides.items():
+            if hasattr(vad_cfg, key):
+                if key.endswith("_ms") or key in ("mic_capture_gain", "arecord_period_size", "arecord_buffer_size"):
+                    setattr(vad_cfg, key, int(val))
+                elif key in ("threshold", "min_silence_duration", "min_speech_duration", "max_speech_duration", "min_segment_sec"):
+                    setattr(vad_cfg, key, float(val))
+                else:
+                    setattr(vad_cfg, key, val)
+
+    def apply_usb_mixer(self) -> None:
+        vol = self.active.usb_mic_volume
+        card = detect_fy_sp701_card()
+        if vol is None or card is None:
+            return
+        vol = max(0, min(24660, int(vol)))
+        subprocess.run(
+            ["amixer", "-c", str(card), "cset", "numid=7", f"{vol},{vol}"],
+            capture_output=True,
+            check=False,
+        )
+        subprocess.run(
+            ["amixer", "-c", str(card), "cset", "numid=8", str(vol)],
+            capture_output=True,
+            check=False,
+        )
+        LOG.info("[audio] USB mic digital volume -> %d (card %d, was max 24660)", vol, card)
 
     def playback_env(self, base: dict[str, str] | None = None) -> dict[str, str]:
         return self.active.load_hw_env(base)

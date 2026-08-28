@@ -92,6 +92,7 @@ class Orchestrator:
             alsa_device=str(vad_cfg.get("alsa_device", "plughw:0,0")),
             min_segment_sec=float(vad_cfg.get("min_segment_sec", 0.5)),
             speech_preroll_ms=int(vad_cfg.get("speech_preroll_ms", 400)),
+            speech_tail_pad_ms=int(vad_cfg.get("speech_tail_pad_ms", 0)),
             arecord_period_size=int(vad_cfg.get("arecord_period_size", 320)),
             arecord_buffer_size=int(vad_cfg.get("arecord_buffer_size", 2560)),
             mic_capture_gain=int(vad_cfg.get("mic_capture_gain", 6)),
@@ -532,6 +533,7 @@ class Orchestrator:
         (self.agent_root / "logs").mkdir(parents=True, exist_ok=True)
         self.set_state(AgentState.IDLE)
         self.ping_llm_daemon()
+        self.audio_profile.apply_usb_mixer()
         await self.emit(
             {
                 "type": "audio_profile",

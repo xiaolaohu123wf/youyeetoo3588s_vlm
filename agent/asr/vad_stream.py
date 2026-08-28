@@ -7,7 +7,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
-from asr.audio_util import collect_stream_prefix, int16_bytes_to_float32, read_wav_float32
+from asr.audio_util import collect_stream_prefix, collect_stream_suffix, int16_bytes_to_float32, read_wav_float32
 from asr.mic_capture import arm_mic, mic_route_guard, open_arecord
 from asr.sherpa_vad import SherpaVad, SherpaVadError
 
@@ -34,6 +34,7 @@ class VadConfig:
     capture_channels: int = 1
     min_segment_sec: float = 0.5
     speech_preroll_ms: int = 400
+    speech_tail_pad_ms: int = 0
     arecord_period_size: int = 320
     arecord_buffer_size: int = 2560
     mic_capture_gain: int = 6
@@ -44,6 +45,10 @@ class VadConfig:
     @property
     def chunk_samples(self) -> int:
         return int(self.sample_rate * self.chunk_ms / 1000)
+
+    @property
+    def tail_pad_samples(self) -> int:
+        return int(self.sample_rate * self.speech_tail_pad_ms / 1000)
 
     @property
     def preroll_samples(self) -> int:
@@ -81,6 +86,14 @@ class VadStream:
             chunks,
             end_index,
             max_samples=self.cfg.preroll_samples,
+        )
+
+    def _suffix_after(self, begin_index: int) -> list[float]:
+        chunks = [(c.start, c.samples) for c in self._history]
+        return collect_stream_suffix(
+            chunks,
+            begin_index,
+            max_samples=self.cfg.tail_pad_samples,
         )
 
     def stop(self) -> None:
@@ -180,6 +193,15 @@ class VadStream:
             elif kind == "segment" and payload is not None:
                 prefix = self._prefix_before(payload.start)
                 segment = prefix + list(payload.samples)
+                end_index = payload.start + len(payload.samples)
+                if self.cfg.speech_tail_pad_ms > 0:
+                    tail = self._suffix_after(end_index)
+                    if tail:
+                        segment.extend(tail)
+                        LOG.debug(
+                            "[vad] tail +%.0fms after segment",
+                            1000 * len(tail) / self.cfg.sample_rate,
+                        )
                 duration_sec = len(segment) / self.cfg.sample_rate
                 if duration_sec < self.cfg.min_segment_sec:
                     LOG.debug("[vad] drop short segment %.2fs", duration_sec)

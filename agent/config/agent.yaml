@@ -24,6 +24,15 @@ socket_path: /tmp/r1-llm.sock
 audio:
   default_profile: auto
   settings_path: /userdata/agent/run/user_settings.json
+  profiles:
+    fy_sp701:
+      usb_mic_volume: 20000
+      vad:
+        threshold: 0.58
+        min_silence_duration: 0.68
+        min_speech_duration: 0.22
+        speech_preroll_ms: 400
+        speech_tail_pad_ms: 350
 
 vad:
   model: /userdata/voice/silero_vad.onnx

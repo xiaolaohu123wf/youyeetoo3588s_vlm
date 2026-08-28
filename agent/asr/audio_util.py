@@ -120,3 +120,26 @@ def collect_stream_prefix(
         e = min(len(samples), end_index - start)
         out.extend(samples[s:e])
     return out
+
+
+def collect_stream_suffix(
+    chunks: list[tuple[int, list[float]]],
+    begin_index: int,
+    *,
+    max_samples: int,
+) -> list[float]:
+    """Return up to max_samples of PCM from begin_index onward in the stream."""
+    if max_samples <= 0:
+        return []
+    end_index = begin_index + max_samples
+    out: list[float] = []
+    for start, samples in chunks:
+        chunk_end = start + len(samples)
+        if chunk_end <= begin_index:
+            continue
+        if start >= end_index:
+            break
+        s = max(0, begin_index - start)
+        e = min(len(samples), end_index - start)
+        out.extend(samples[s:e])
+    return out
