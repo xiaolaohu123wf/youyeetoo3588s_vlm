@@ -23,7 +23,7 @@ PC 推送：`powershell -File agent/scripts/push_agent.ps1`
 
 | 目录 | 角色 |
 |------|------|
-| `../voice/` | P3.5 批处理原型（ASR/TTS/LLM shell 链路）· 硬件脚本复用 |
+| `../voice/` | P3.5 板载 ES8388 · P3.6 FY-SP701 USB 模组（`fy_sp701_*.sh`） |
 | `../p4/` | RTSP + VLM 看图原型 · `see()` 能力来源 |
 | `agent/` | **P5 新架构**：常驻 daemon + 流式编排 |
 
@@ -32,6 +32,7 @@ PC 推送：`powershell -File agent/scripts/push_agent.ps1`
 ## 文档
 
 - [`docs/TECH_PLAN.md`](docs/TECH_PLAN.md) — **v1.0 技术方案**（常驻模型四件套 · IPC · 阶段）
+- [`docs/PHASE_3_6.md`](docs/PHASE_3_6.md) — **Phase 3.6** FY-SP701 V3 USB 阵列麦 + 功放验收
 - [`docs/ASR_STREAMING.md`](docs/ASR_STREAMING.md) — **Phase F** streaming Paraformer ASR
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 架构概览
 
