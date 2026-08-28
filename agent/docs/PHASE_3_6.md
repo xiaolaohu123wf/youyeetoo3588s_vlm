@@ -70,3 +70,16 @@ AGENT_AUDIO_PROFILE=board bash /userdata/agent/scripts/start_orchestrator.sh
 | ASR 空 | 靠近模组说话；peak>1500；跑 `fy_sp701_mic_diag.sh` |
 | 播放无声 | 外接 8Ω 喇叭是否接模块功放输出；`amixer -c 1` |
 | 全双工回声大 | 手册 AEC 为硬件侧；实机对话测 `fy_sp701_asr_tts.sh` |
+| **插 SP701 后 adb 断** | 见 [`docs/ADB_SP701_COEXIST.md`](ADB_SP701_COEXIST.md) · `apply_adb_sp701_fix_now.sh` |
+
+## adb 与 SP701 同时在线
+
+- **adb 线** → 板子 **调试 Type-A 口**（gadget）
+- **SP701** → **Host USB 口**（不可插调试口）
+
+```bash
+sudo bash /userdata/agent/scripts/install_usb_adb_mic_boot.sh
+sudo bash /userdata/agent/scripts/test_sp701_adb.sh
+```
+
+冷启动或热插后若 PC `adb devices` 为空，**等待 30–60s** 或跑 `apply_adb_sp701_fix_now.sh`。详见 [`ADB_SP701_COEXIST.md`](ADB_SP701_COEXIST.md)。

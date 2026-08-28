@@ -25,6 +25,13 @@ notify() {
 
 mkdir -p "${AGENT_ROOT}/run" "${AGENT_ROOT}/logs" "${CHROMIUM_PROFILE}"
 
+LOCKFILE="${AGENT_ROOT}/run/gui.launch.lock"
+exec 9>"${LOCKFILE}"
+if ! flock -n 9; then
+  log "another GUI launch in progress — skip"
+  exit 0
+fi
+
 stop_existing_gui() {
   pkill -u "${USER_NAME}" -f "${CHROMIUM_PROFILE}" 2>/dev/null || true
   pkill -u "${USER_NAME}" -f "chromium.*${PORT}" 2>/dev/null || true
@@ -90,6 +97,21 @@ hide_gnome_chrome() {
     "Main.panel.actor.hide(); 'ok'" 2>/dev/null || true
 }
 
+show_gnome_chrome() {
+  export DISPLAY="${DISPLAY:-:0}"
+  export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u "${USER_NAME}")/bus}"
+  gdbus call --session \
+    --dest org.gnome.Shell \
+    --object-path /org/gnome/Shell \
+    --method org.gnome.Shell.Eval \
+    "Main.panel.actor.show(); 'ok'" 2>/dev/null || true
+}
+
+chromium_running() {
+  pgrep -u "${USER_NAME}" -f "${CHROMIUM_PROFILE}" >/dev/null 2>&1 \
+    || pgrep -u "${USER_NAME}" -f "chromium.*${PORT}" >/dev/null 2>&1
+}
+
 open_browser() {
   # Chromium 91: --kiosk must be separate from URL; --app=URL is reliable on embedded GNOME.
   local flags=(
@@ -124,13 +146,27 @@ if [[ ! -f "${UI_DIR}/index.html" ]]; then
 fi
 
 stop_existing_gui
+
+# Stale lock after crash/power loss causes Chromium abort + desktop notify popup.
+if [[ -f "${CHROMIUM_PROFILE}/SingletonLock" ]]; then
+  rm -f "${CHROMIUM_PROFILE}/SingletonLock" "${CHROMIUM_PROFILE}/SingletonCookie" "${CHROMIUM_PROFILE}/SingletonSocket" 2>/dev/null || true
+  log "removed stale chromium profile lock"
+fi
+
 start_http
 
 if open_browser; then
-  sleep 1.5
-  hide_gnome_chrome
-  log "opened ${URL} profile=${CHROMIUM_PROFILE}"
+  sleep 2
+  if chromium_running; then
+    hide_gnome_chrome
+    log "opened ${URL} profile=${CHROMIUM_PROFILE}"
+  else
+    show_gnome_chrome
+    notify "浏览器启动失败，已恢复桌面顶栏，见 ${GUI_LOG}"
+    exit 1
+  fi
 else
+  show_gnome_chrome
   notify "未找到可用浏览器，请手动打开 ${URL}"
   exit 1
 fi

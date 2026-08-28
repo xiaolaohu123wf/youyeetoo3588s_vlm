@@ -11,8 +11,9 @@ youyeetoo R1（RK3588S）+ RM1828（RK1828）端侧对话智能体。
 | 控制面板 | `agent/ui/index.html` · HTTP **8766** · Chromium 全屏 |
 | WebSocket 状态 | `ws://127.0.0.1:8765/ws` |
 | 桌面图标 | `~/Desktop/小揽语音助手.desktop` |
-| 登录自启 GUI | `~/.config/autostart/xiaolan-gui-autostart.desktop` |
+| 登录自启 GUI | systemd `r1-agent-gui.service`（GNOME autostart 已禁用防双开） |
 | 语音服务自启 | `r1-llm-daemon` + `r1-orchestrator`（systemd） |
+| FY-SP701 + adb | [`docs/ADB_SP701_COEXIST.md`](docs/ADB_SP701_COEXIST.md) · `install_usb_adb_mic_boot.sh` |
 | 科技风壁纸 | `/userdata/agent/ui/wallpaper.svg` |
 | 一键安装 | `sudo bash /userdata/agent/scripts/install_autostart.sh` |
 | 打开 GUI | 双击桌面图标 · 或 `bash /userdata/agent/scripts/open_agent_gui.sh` |
@@ -33,6 +34,7 @@ PC 推送：`powershell -File agent/scripts/push_agent.ps1`
 
 - [`docs/TECH_PLAN.md`](docs/TECH_PLAN.md) — **v1.0 技术方案**（常驻模型四件套 · IPC · 阶段）
 - [`docs/PHASE_3_6.md`](docs/PHASE_3_6.md) — **Phase 3.6** FY-SP701 V3 USB 阵列麦 + 功放验收
+- [`docs/ADB_SP701_COEXIST.md`](docs/ADB_SP701_COEXIST.md) — FY-SP701 与 adb 调试口共存
 - [`docs/ASR_STREAMING.md`](docs/ASR_STREAMING.md) — **Phase F** streaming Paraformer ASR
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 架构概览
 

@@ -1,6 +1,7 @@
 """Offline TTS — persistent sherpa C API (Matcha/VITS) with CLI fallback."""
 from __future__ import annotations
 
+from tts.pronunciation_fix import fix_tts_pronunciation
 import logging
 import os
 import re
@@ -102,7 +103,7 @@ class TtsEngine:
         return ",".join(self.cfg.rule_fsts)
 
     def synthesize(self, text: str, out_path: str | None = None) -> Path:
-        text = text.strip()
+        text = fix_tts_pronunciation(text.strip())
         if not text:
             raise ValueError("empty TTS text")
         if len(text) > self.cfg.max_chars:

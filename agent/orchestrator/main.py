@@ -37,6 +37,7 @@ from tts.sentence_split import (
     persona_reply_for,
     sanitize_tts_text,
     should_skip_llm,
+    split_tts_clauses,
 )
 from tts.tts_engine import TtsConfig, TtsEngine
 from tts.tts_queue import TtsQueue
@@ -538,8 +539,9 @@ class Orchestrator:
             return
         LOG.info("[tts] speak plan: %d sentence(s)", len(sents))
         for sent in sents:
-            if not await self._enqueue_speak(sent, tts_state):
-                break
+            for clause in split_tts_clauses(sent):
+                if not await self._enqueue_speak(clause, tts_state):
+                    break
         if int(tts_state["n"]) <= 0 or self._tts_abort:
             return
         self.set_state(AgentState.TTS)

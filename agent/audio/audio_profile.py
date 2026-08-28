@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -52,6 +53,17 @@ class AudioProfile:
                 env[key] = val
         env.update(self.playback_env)
         return env
+
+
+def wait_for_fy_sp701_card(timeout_sec: float = 45.0, poll_sec: float = 0.5) -> int | None:
+    """Poll until FY-SP701 lsusb + ALSA card appear, or timeout."""
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        card = detect_fy_sp701_card()
+        if card is not None:
+            return card
+        time.sleep(poll_sec)
+    return None
 
 
 def detect_fy_sp701_card() -> int | None:
@@ -224,7 +236,10 @@ class AudioProfileManager:
         ).strip()
 
         if default == "auto":
-            profile_id = "fy_sp701" if detect_fy_sp701_card() is not None else "board"
+            wait_sec = float(audio_cfg.get("auto_detect_wait_sec", 45))
+            profile_id = (
+                "fy_sp701" if wait_for_fy_sp701_card(wait_sec) is not None else "board"
+            )
         else:
             profile_id = default if default in profiles_raw else "board"
 

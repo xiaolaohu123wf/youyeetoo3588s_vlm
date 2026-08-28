@@ -62,9 +62,11 @@ bash "${AGENT_ROOT}/scripts/scale_desktop_icons.sh" "${USER_NAME}" 128 2.25 || t
 # Tech-style wallpaper
 bash "${AGENT_ROOT}/scripts/set_tech_wallpaper.sh" "${USER_NAME}" || true
 
-# GUI autostart on login (GNOME) + systemd fallback
-install -m 755 "${AGENT_ROOT}/scripts/xiaolan-gui-autostart.desktop" \
+# GUI autostart via systemd only (avoid duplicate GNOME + systemd Chromium launches).
+install -m 644 "${AGENT_ROOT}/scripts/xiaolan-gui-autostart.desktop" \
   "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop"
+sed -i 's/^Hidden=false/Hidden=true/; s/^X-GNOME-Autostart-enabled=true/X-GNOME-Autostart-enabled=false/' \
+  "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop" 2>/dev/null || true
 chown "${USER_NAME}:${USER_NAME}" "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop" 2>/dev/null || true
 
 install -m 644 "${AGENT_ROOT}/systemd/r1-agent-gui.service" /etc/systemd/system/

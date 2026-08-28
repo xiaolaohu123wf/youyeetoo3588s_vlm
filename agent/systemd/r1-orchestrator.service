@@ -15,7 +15,7 @@ Environment=LD_LIBRARY_PATH=/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-sh
 Environment=AGENT_MIC_CAPTURE_GAIN=6
 WorkingDirectory=/userdata/agent
 ExecStartPre=/bin/bash /userdata/agent/scripts/fix_llm_sock_perms.sh /tmp/r1-llm.sock 90
-ExecStartPre=/bin/bash /userdata/voice/scripts/voice_hw_board.sh
+ExecStartPre=/bin/bash /userdata/agent/scripts/wait_fy_sp701.sh
 ExecStart=/usr/bin/python3 -m orchestrator.main --config /userdata/agent/config/agent.yaml --agent-root /userdata/agent
 StandardOutput=append:/userdata/agent/logs/orchestrator.log
 StandardError=append:/userdata/agent/logs/orchestrator.log

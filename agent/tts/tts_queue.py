@@ -6,6 +6,7 @@ import logging
 import time
 from pathlib import Path
 
+from tts.pronunciation_fix import fix_tts_pronunciation
 from tts.sentence_split import is_speakable, sanitize_tts_text
 from tts.tts_engine import TtsEngine
 
@@ -92,6 +93,7 @@ class TtsQueue:
         if self._interrupted.is_set():
             return
         text = sanitize_tts_text(text)
+        text = fix_tts_pronunciation(text)
         if not is_speakable(text):
             return
         self._utterance_chunks += 1

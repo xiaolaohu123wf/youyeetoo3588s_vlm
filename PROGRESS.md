@@ -1,6 +1,6 @@
 # youyeetoo R1 + RM1828 项目进展
 
-> 最后更新：2026-08-27  
+> 最后更新：2026-08-28  
 > 板端：R1 · Ubuntu 22.04 · kernel 5.10.110 **#12**  
 > 加速卡：RK1828 · FW/API **1.0.5b10**
 
@@ -145,11 +145,15 @@ bash /userdata/p4/scripts/p4_loop.sh 3
 | HDMI 全屏 GUI（Chromium :8766 · WS :8765） | ✅ |
 | 登录自启 GUI + 桌面图标 + 科技风壁纸 | ✅ |
 | 大屏布局：标题「语音助手」· 紧凑状态栏 | ✅ |
+| FY-SP701 USB 麦 + adb 调试口共存 | ✅ [`docs/ADB_SP701_COEXIST.md`](agent/docs/ADB_SP701_COEXIST.md) |
 
 ```bash
 # PC 推送 + 安装
 powershell -File agent/scripts/push_agent.ps1
 adb shell sudo bash /userdata/agent/scripts/install_autostart.sh
+
+# SP701 + adb 共存（板端）
+sudo bash /userdata/agent/scripts/install_usb_adb_mic_boot.sh
 
 # 手动打开 GUI
 bash /userdata/agent/scripts/open_agent_gui.sh
