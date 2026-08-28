@@ -42,6 +42,12 @@
       justify-content: space-between;
       gap: 0.75rem;
     }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex: 0 0 auto;
+    }
     h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
     .exit-btn {
       flex: 0 0 auto;
@@ -58,6 +64,114 @@
     }
     .exit-btn:hover { background: #2d3f56; }
     .exit-btn:active { background: #1a2838; }
+    .settings-btn {
+      flex: 0 0 auto;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.4rem 0.95rem;
+      border-radius: 10px;
+      border: 1px solid #3d8bfd66;
+      background: #1e3a5f;
+      color: var(--text);
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .settings-btn:hover { background: #254a75; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 20;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(100%, 520px);
+      max-height: 90vh;
+      overflow: auto;
+      background: var(--card);
+      border: 1px solid #243044;
+      border-radius: 16px;
+      padding: 1rem 1.1rem 1.1rem;
+    }
+    .modal h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.15rem;
+    }
+    .field {
+      margin-bottom: 0.85rem;
+    }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .field select,
+    .field input[type="range"] {
+      width: 100%;
+      font: inherit;
+      font-size: 0.95rem;
+    }
+    .field select {
+      padding: 0.45rem 0.55rem;
+      border-radius: 10px;
+      border: 1px solid #243044;
+      background: #0f1419;
+      color: var(--text);
+    }
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .range-val {
+      min-width: 3.2rem;
+      text-align: right;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .modal-note {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin: 0.2rem 0 0.85rem;
+      line-height: 1.45;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.55rem;
+      margin-top: 0.35rem;
+    }
+    .btn-secondary,
+    .btn-primary {
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.42rem 0.95rem;
+      border-radius: 10px;
+      cursor: pointer;
+      border: 1px solid #4a6078;
+    }
+    .btn-secondary {
+      background: #243044;
+      color: var(--text);
+    }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .settings-status {
+      min-height: 1.1rem;
+      font-size: 0.72rem;
+      color: var(--warn);
+      margin-top: 0.35rem;
+    }
     main {
       flex: 1 1 auto;
       min-height: 0;
@@ -167,9 +281,66 @@
   <header>
     <div class="header-row">
       <h1>语音助手</h1>
-      <button id="exitBtn" class="exit-btn" type="button">退出</button>
+      <div class="header-actions">
+        <button id="settingsBtn" class="settings-btn" type="button">设置</button>
+        <button id="exitBtn" class="exit-btn" type="button">退出</button>
+      </div>
     </div>
   </header>
+  <div id="settingsModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">语音设置</h2>
+      <p class="modal-note">输出设备随输入配置自动切换。对话进行中无法更换音频设备。</p>
+      <div class="field">
+        <label for="audioProfile">输入设备</label>
+        <select id="audioProfile"></select>
+      </div>
+      <div class="field">
+        <label for="voiceId">音色</label>
+        <select id="voiceId"></select>
+      </div>
+      <div class="field">
+        <label for="speed">语速</label>
+        <div class="range-row">
+          <input id="speed" type="range" min="0.7" max="1.4" step="0.05" />
+          <span id="speedVal" class="range-val">1.0</span>
+        </div>
+      </div>
+      <div class="field" id="usbVolField">
+        <label for="usbMicVol">USB 麦克风增益</label>
+        <div class="range-row">
+          <input id="usbMicVol" type="range" min="8000" max="24660" step="500" />
+          <span id="usbMicVolVal" class="range-val">20000</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="vadThreshold">VAD 灵敏度（越高越不敏感）</label>
+        <div class="range-row">
+          <input id="vadThreshold" type="range" min="0.35" max="0.75" step="0.01" />
+          <span id="vadThresholdVal" class="range-val">0.58</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="vadSilence">句尾静音时长（秒）</label>
+        <div class="range-row">
+          <input id="vadSilence" type="range" min="0.35" max="1.0" step="0.01" />
+          <span id="vadSilenceVal" class="range-val">0.68</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="vadTail">句尾补录（毫秒）</label>
+        <div class="range-row">
+          <input id="vadTail" type="range" min="0" max="600" step="25" />
+          <span id="vadTailVal" class="range-val">350</span>
+        </div>
+      </div>
+      <div id="settingsStatus" class="settings-status"></div>
+      <div class="modal-actions">
+        <button id="settingsCancel" class="btn-secondary" type="button">取消</button>
+        <button id="settingsSave" class="btn-primary" type="button">保存</button>
+      </div>
+    </div>
+  </div>
   <main>
     <div class="top-bar">
       <div id="state" class="state-big">—</div>
@@ -196,6 +367,27 @@
     const wsLabel = document.getElementById("wsLabel");
     const svcDot = document.getElementById("svcDot");
     const svcLabel = document.getElementById("svcLabel");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsModal = document.getElementById("settingsModal");
+    const settingsCancel = document.getElementById("settingsCancel");
+    const settingsSave = document.getElementById("settingsSave");
+    const settingsStatus = document.getElementById("settingsStatus");
+    const audioProfileEl = document.getElementById("audioProfile");
+    const voiceIdEl = document.getElementById("voiceId");
+    const speedEl = document.getElementById("speed");
+    const speedValEl = document.getElementById("speedVal");
+    const usbVolField = document.getElementById("usbVolField");
+    const usbMicVolEl = document.getElementById("usbMicVol");
+    const usbMicVolValEl = document.getElementById("usbMicVolVal");
+    const vadThresholdEl = document.getElementById("vadThreshold");
+    const vadThresholdValEl = document.getElementById("vadThresholdVal");
+    const vadSilenceEl = document.getElementById("vadSilence");
+    const vadSilenceValEl = document.getElementById("vadSilenceVal");
+    const vadTailEl = document.getElementById("vadTail");
+    const vadTailValEl = document.getElementById("vadTailVal");
+
+    let wsRef = null;
+    let settingsDraft = null;
 
     const STATE_ZH = {
       IDLE: "空闲",
@@ -228,8 +420,104 @@
       setTimeout(() => { window.location.href = "about:blank"; }, 150);
     });
 
+    function bindRange(input, label, fmt = (v) => v) {
+      input.addEventListener("input", () => {
+        label.textContent = fmt(input.value);
+      });
+    }
+    bindRange(speedEl, speedValEl, (v) => Number(v).toFixed(2));
+    bindRange(usbMicVolEl, usbMicVolValEl);
+    bindRange(vadThresholdEl, vadThresholdValEl, (v) => Number(v).toFixed(2));
+    bindRange(vadSilenceEl, vadSilenceValEl, (v) => Number(v).toFixed(2));
+    bindRange(vadTailEl, vadTailValEl);
+
+    function openSettings() {
+      settingsStatus.textContent = "";
+      settingsModal.classList.add("open");
+      settingsModal.setAttribute("aria-hidden", "false");
+      if (wsRef && wsRef.readyState === WebSocket.OPEN) {
+        wsRef.send(JSON.stringify({ type: "settings_get" }));
+      }
+    }
+
+    function closeSettings() {
+      settingsModal.classList.remove("open");
+      settingsModal.setAttribute("aria-hidden", "true");
+    }
+
+    function fillSettings(snap) {
+      settingsDraft = snap;
+      audioProfileEl.innerHTML = "";
+      (snap.audio_profiles || []).forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.label;
+        audioProfileEl.appendChild(opt);
+      });
+      audioProfileEl.value = snap.audio_profile || "auto";
+      audioProfileEl.disabled = snap.can_change_audio === false;
+
+      voiceIdEl.innerHTML = "";
+      (snap.voices || []).forEach((v) => {
+        const opt = document.createElement("option");
+        opt.value = v.id;
+        opt.textContent = v.available ? v.label : `${v.label}（未安装）`;
+        opt.disabled = !v.available;
+        voiceIdEl.appendChild(opt);
+      });
+      voiceIdEl.value = snap.voice_id || "baker";
+
+      speedEl.min = snap.speed_min || 0.7;
+      speedEl.max = snap.speed_max || 1.4;
+      speedEl.value = snap.speed || 1.0;
+      speedValEl.textContent = Number(speedEl.value).toFixed(2);
+
+      const showUsb = snap.usb_mic_supported || snap.active_audio_profile === "fy_sp701";
+      usbVolField.style.display = showUsb ? "block" : "none";
+      usbMicVolEl.max = snap.usb_mic_volume_max || 24660;
+      usbMicVolEl.value = snap.usb_mic_volume || 20000;
+      usbMicVolValEl.textContent = usbMicVolEl.value;
+
+      const vad = snap.vad || {};
+      vadThresholdEl.value = vad.threshold ?? 0.58;
+      vadThresholdValEl.textContent = Number(vadThresholdEl.value).toFixed(2);
+      vadSilenceEl.value = vad.min_silence_duration ?? 0.68;
+      vadSilenceValEl.textContent = Number(vadSilenceEl.value).toFixed(2);
+      vadTailEl.value = vad.speech_tail_pad_ms ?? 350;
+      vadTailValEl.textContent = vadTailEl.value;
+    }
+
+    function collectPatch() {
+      return {
+        audio_profile: audioProfileEl.value,
+        voice_id: voiceIdEl.value,
+        speed: Number(speedEl.value),
+        usb_mic_volume: Number(usbMicVolEl.value),
+        vad: {
+          threshold: Number(vadThresholdEl.value),
+          min_silence_duration: Number(vadSilenceEl.value),
+          speech_tail_pad_ms: Number(vadTailEl.value),
+        },
+      };
+    }
+
+    settingsBtn.addEventListener("click", openSettings);
+    settingsCancel.addEventListener("click", closeSettings);
+    settingsModal.addEventListener("click", (ev) => {
+      if (ev.target === settingsModal) closeSettings();
+    });
+    settingsSave.addEventListener("click", () => {
+      if (!wsRef || wsRef.readyState !== WebSocket.OPEN) {
+        settingsStatus.textContent = "未连接语音服务，无法保存。";
+        return;
+      }
+      settingsStatus.textContent = "保存中…";
+      wsRef.send(JSON.stringify({ type: "settings_set", patch: collectPatch() }));
+    });
+
     function connect() {
       const ws = new WebSocket(WS_URL);
+      wsRef = ws;
       ws.onopen = () => {
         setWs(true, "已连接");
         setSvc(true, "语音服务正常");
@@ -260,6 +548,28 @@
         if (msg.type === "reply_final" && msg.text) {
           llmBuf = msg.text;
           setContent(replyEl, msg.text, false);
+        }
+        if (msg.type === "settings_snapshot") {
+          fillSettings(msg);
+        }
+        if (msg.type === "settings_applied") {
+          if (msg.ok) {
+            settingsStatus.textContent = msg.restart_vad
+              ? "已保存，音频参数已热更新。"
+              : "已保存。";
+            fillSettings(msg);
+            setTimeout(closeSettings, 700);
+          } else if ((msg.errors || []).includes("busy")) {
+            settingsStatus.textContent = "对话进行中，请稍后再切换音频设备。";
+            fillSettings(msg);
+          } else {
+            settingsStatus.textContent = "保存失败，请重试。";
+          }
+        }
+        if (msg.type === "voice_settings") {
+          if (settingsModal.classList.contains("open") && wsRef) {
+            wsRef.send(JSON.stringify({ type: "settings_get" }));
+          }
         }
       };
     }

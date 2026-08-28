@@ -35,6 +35,7 @@ Push-PyTree "$Root\agent\llm" "$Board/llm"
 Push-PyTree "$Root\agent\tts" "$Board/tts"
 Push-PyTree "$Root\agent\audio" "$Board/audio"
 Push-PyTree "$Root\agent\api" "$Board/api"
+Push-PyTree "$Root\agent\settings" "$Board/settings"
 
 Get-ChildItem "$Root\agent\scripts" -Filter "*.py" | ForEach-Object {
     Push-Lf $_.FullName "$Board/scripts/$($_.Name)"

@@ -162,9 +162,43 @@ FY_SP701_DEFAULTS: dict[str, Any] = {
 
 
 class AudioProfileManager:
-    def __init__(self, active: AudioProfile, settings_path: Path) -> None:
+    PROFILE_CHOICES = (
+        ("auto", "自动检测"),
+        ("board", "板载 ES8388"),
+        ("fy_sp701", "FY-SP701 USB"),
+    )
+
+    def __init__(
+        self,
+        active: AudioProfile,
+        settings_path: Path,
+        profiles_raw: dict[str, dict[str, Any]],
+    ) -> None:
         self.active = active
         self.settings_path = settings_path
+        self.profiles_raw = profiles_raw
+
+    def apply_user_overrides(self, *, usb_mic_volume: int | None = None, vad: dict[str, Any] | None = None) -> None:
+        if usb_mic_volume is not None:
+            self.active.usb_mic_volume = max(0, min(24660, int(usb_mic_volume)))
+        if vad:
+            merged = dict(self.active.vad_overrides)
+            merged.update(vad)
+            self.active.vad_overrides = merged
+
+    def switch_active(self, profile_id: str) -> None:
+        if profile_id == "auto":
+            profile_id = "fy_sp701" if detect_fy_sp701_card() is not None else "board"
+        if profile_id not in self.profiles_raw:
+            profile_id = "board"
+        self.active = _profile_from_dict(profile_id, self.profiles_raw[profile_id])
+        LOG.info(
+            "[audio] switched profile=%s (%s) capture=%s play=%s",
+            self.active.profile_id,
+            self.active.label,
+            self.active.capture_device,
+            self.active.play_script,
+        )
 
     @classmethod
     def from_config(
@@ -202,7 +236,8 @@ class AudioProfileManager:
             active.capture_device,
             active.play_script,
         )
-        return cls(active, settings_path)
+        mgr = cls(active, settings_path, profiles_raw)
+        return mgr
 
     @staticmethod
     def _read_saved_profile(path: Path) -> str | None:
@@ -224,6 +259,20 @@ class AudioProfileManager:
             except (json.JSONDecodeError, OSError):
                 data = {}
         data["audio_profile"] = profile_id
+        self.settings_path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+    def save_fields(self, fields: dict[str, Any]) -> None:
+        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+        data: dict[str, Any] = {}
+        if self.settings_path.is_file():
+            try:
+                data = json.loads(self.settings_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                data = {}
+        data.update(fields)
         self.settings_path.write_text(
             json.dumps(data, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",

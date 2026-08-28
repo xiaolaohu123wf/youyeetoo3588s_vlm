@@ -1,8 +1,7 @@
 """Minimal WebSocket broadcast server (stdlib asyncio only)."""
 from __future__ import annotations
 
-import asyncio
-import base64
+from collections.abc import Awaitable, Callable
 import contextlib
 import hashlib
 import logging
@@ -64,6 +63,7 @@ async def _handle_client(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     bus: EventBus,
+    on_message: Callable[[str], Awaitable[None]] | None = None,
 ) -> None:
     peer = writer.get_extra_info("peername")
     q: asyncio.Queue[str] | None = None
@@ -109,6 +109,11 @@ async def _handle_client(
                 msg = await _read_frame(reader)
                 if msg is None:
                     return
+                if msg and on_message:
+                    try:
+                        await on_message(msg)
+                    except Exception as exc:
+                        LOG.warning("[api] ws inbound handler failed: %s", exc)
 
         out_task = asyncio.create_task(pump_out())
         in_task = asyncio.create_task(pump_in())
@@ -131,9 +136,15 @@ async def _handle_client(
         LOG.info("[api] ws client disconnected %s", peer)
 
 
-async def run_ws_server(bus: EventBus, host: str = "127.0.0.1", port: int = 8765) -> asyncio.Server:
+async def run_ws_server(
+    bus: EventBus,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    *,
+    on_message=None,
+) -> asyncio.Server:
     server = await asyncio.start_server(
-        lambda r, w: _handle_client(r, w, bus),
+        lambda r, w: _handle_client(r, w, bus, on_message),
         host,
         port,
     )

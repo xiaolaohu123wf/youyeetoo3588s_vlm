@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import json
 import logging
 import sys
 import time
@@ -23,6 +25,7 @@ from asr.vad_stream import VadConfig, VadStream
 from llm.client import llm_chat_stream, llm_clear_history, llm_ping
 from orchestrator.config_loader import load_yaml
 from orchestrator.events import AgentState
+from settings.store import UserSettingsStore
 from tts.sentence_split import (
     canned_reply_for,
     clean_llm_reply,
@@ -62,6 +65,7 @@ class Orchestrator:
         self._turn_busy = False
         self._speaking = False
         self._tts_abort = False
+        self._vad_restart = asyncio.Event()
 
         vad_cfg = cfg.get("vad") or {}
         asr_cfg = cfg.get("asr") or {}
@@ -101,8 +105,18 @@ class Orchestrator:
         self.listen_cooldown_skip_max_sec = float(vad_cfg.get("listen_cooldown_skip_max_sec", 0.45))
 
         audio_override = (cfg.get("_cli_audio_profile") or "").strip() or None
+        audio_cfg = cfg.get("audio") or {}
+        settings_path = Path(
+            audio_cfg.get("settings_path", str(agent_root / "run" / "user_settings.json"))
+        )
+        self.user_settings = UserSettingsStore(settings_path)
+        saved_user = self.user_settings.load()
         self.audio_profile = AudioProfileManager.from_config(
             cfg, agent_root, cli_override=audio_override
+        )
+        self.audio_profile.apply_user_overrides(
+            usb_mic_volume=saved_user.usb_mic_volume,
+            vad=saved_user.vad or None,
         )
         self.audio_profile.apply_to_vad(self.vad_config)
 
@@ -162,6 +176,10 @@ class Orchestrator:
         self._chat_turns: list[tuple[str, str]] = []
         self._llm_last_turn_at = 0.0
         self.voice_settings = VoiceSettingsManager.from_config(tts_cfg)
+        if saved_user.voice_id:
+            self.voice_settings.apply(voice_id=saved_user.voice_id)
+        if saved_user.speed is not None:
+            self.voice_settings.apply(speed=saved_user.speed)
         tts_engine = TtsEngine(self._tts_config_from_voice())
         tts_engine.set_playback_env(self.audio_profile.playback_env())
         self.tts_queue = TtsQueue(
@@ -264,12 +282,162 @@ class Orchestrator:
         await self.tts_queue.interrupt()
         await self.emit({"type": "barge_in", "phase": "tts"})
 
+    async def handle_ws_message(self, text: str) -> None:
+        try:
+            msg = json.loads(text)
+        except json.JSONDecodeError:
+            return
+        mtype = msg.get("type")
+        if mtype == "settings_get":
+            await self.emit(await self._build_settings_snapshot())
+        elif mtype == "settings_set":
+            await self._apply_settings_patch(msg.get("patch") or {})
+
+    def _can_hot_swap_audio(self) -> bool:
+        return (
+            not self._turn_busy
+            and not self._speaking
+            and self.state in (AgentState.IDLE, AgentState.LISTEN)
+        )
+
+    async def _build_settings_snapshot(self) -> dict[str, Any]:
+        saved = self.user_settings.load()
+        rt = self.voice_settings.runtime
+        voice = self.voice_settings.active_profile()
+        audio_choice = saved.audio_profile or str(
+            (self.cfg.get("audio") or {}).get("default_profile", "auto")
+        )
+        return {
+            "type": "settings_snapshot",
+            "state": self.state.value,
+            "audio_profiles": [
+                {"id": pid, "label": label} for pid, label in AudioProfileManager.PROFILE_CHOICES
+            ],
+            "audio_profile": audio_choice,
+            "active_audio_profile": self.audio_profile.active.profile_id,
+            "active_audio_label": self.audio_profile.active.label,
+            "voices": [
+                {
+                    "id": p.voice_id,
+                    "label": p.label,
+                    "available": p.available(),
+                }
+                for p in self.voice_settings.profiles.values()
+            ],
+            "voice_id": rt.voice_id,
+            "voice_label": voice.label,
+            "speed": rt.speed,
+            "speed_min": self.voice_settings.speed_min,
+            "speed_max": self.voice_settings.speed_max,
+            "usb_mic_volume": self.audio_profile.active.usb_mic_volume or 20000,
+            "usb_mic_volume_max": 24660,
+            "usb_mic_supported": self.audio_profile.active.profile_id == "fy_sp701",
+            "vad": {
+                "threshold": self.vad_config.threshold,
+                "min_silence_duration": self.vad_config.min_silence_duration,
+                "speech_tail_pad_ms": self.vad_config.speech_tail_pad_ms,
+            },
+            "can_change_audio": self._can_hot_swap_audio(),
+        }
+
+    async def _apply_settings_patch(self, patch: dict[str, Any]) -> None:
+        errors: list[str] = []
+        restart_vad = False
+        store_patch: dict[str, Any] = {}
+
+        if "voice_id" in patch and patch["voice_id"]:
+            self.voice_settings.apply(voice_id=str(patch["voice_id"]))
+            store_patch["voice_id"] = self.voice_settings.runtime.voice_id
+            await self._sync_tts_from_voice_settings()
+
+        if "speed" in patch and patch["speed"] is not None:
+            self.voice_settings.apply(speed=float(patch["speed"]))
+            store_patch["speed"] = self.voice_settings.runtime.speed
+            await self._sync_tts_from_voice_settings()
+
+        if "audio_profile" in patch and patch["audio_profile"] is not None:
+            choice = str(patch["audio_profile"]).strip()
+            if choice not in ("auto", "board", "fy_sp701"):
+                errors.append("invalid_audio_profile")
+            elif not self._can_hot_swap_audio():
+                errors.append("busy")
+            else:
+                store_patch["audio_profile"] = choice
+                self.audio_profile.switch_active(choice)
+                saved = self.user_settings.load()
+                self.audio_profile.apply_user_overrides(
+                    usb_mic_volume=saved.usb_mic_volume,
+                    vad=saved.vad or None,
+                )
+                self.audio_profile.apply_to_vad(self.vad_config)
+                self.audio_profile.apply_usb_mixer()
+                await self._sync_tts_from_voice_settings()
+                restart_vad = True
+                await self.emit(
+                    {
+                        "type": "audio_profile",
+                        "profile_id": self.audio_profile.active.profile_id,
+                        "label": self.audio_profile.active.label,
+                        "capture_device": self.audio_profile.active.capture_device,
+                        "play_script": self.audio_profile.active.play_script,
+                    }
+                )
+
+        if "usb_mic_volume" in patch and patch["usb_mic_volume"] is not None:
+            vol = max(0, min(24660, int(patch["usb_mic_volume"])))
+            store_patch["usb_mic_volume"] = vol
+            self.audio_profile.apply_user_overrides(usb_mic_volume=vol)
+            self.audio_profile.apply_usb_mixer()
+
+        if "vad" in patch and isinstance(patch["vad"], dict):
+            store_patch["vad"] = patch["vad"]
+            self.audio_profile.apply_user_overrides(vad=patch["vad"])
+            self.audio_profile.apply_to_vad(self.vad_config)
+            if self._can_hot_swap_audio():
+                restart_vad = True
+
+        if store_patch:
+            self.user_settings.patch(store_patch)
+
+        if restart_vad:
+            self._vad_restart.set()
+
+        snap = await self._build_settings_snapshot()
+        await self.emit(
+            {
+                "type": "settings_applied",
+                "ok": not errors,
+                "errors": errors,
+                "restart_vad": restart_vad,
+                **{k: v for k, v in snap.items() if k != "type"},
+            }
+        )
+
     async def run_vad_loop(self, inject_wav: str | None = None) -> None:
         try:
-            if inject_wav:
-                await self.vad_stream.run_wav_file(inject_wav)
-            else:
-                await self.vad_stream.run_live()
+            while True:
+                if inject_wav:
+                    await self.vad_stream.run_wav_file(inject_wav)
+                    break
+                self.vad_stream = VadStream(self.vad_config, self.vad_queue)
+                live_task = asyncio.create_task(self.vad_stream.run_live())
+                restart_task = asyncio.create_task(self._vad_restart.wait())
+                done, pending = await asyncio.wait(
+                    [live_task, restart_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await task
+                if self._vad_restart.is_set():
+                    self._vad_restart.clear()
+                    self.vad_stream.stop()
+                    with contextlib.suppress(Exception):
+                        await live_task
+                    LOG.info("[settings] VAD restarted after audio settings change")
+                    continue
+                break
         finally:
             await self.vad_queue.put({"type": "shutdown"})
 
@@ -546,7 +714,12 @@ class Orchestrator:
         await self.tts_queue.start()
         if self.api_enabled:
             try:
-                await run_ws_server(self.event_bus, self.api_host, self.api_port)
+                await run_ws_server(
+                    self.event_bus,
+                    self.api_host,
+                    self.api_port,
+                    on_message=self.handle_ws_message,
+                )
             except OSError as exc:
                 LOG.warning(
                     "[api] WebSocket bind failed (%s) — voice pipeline continues without WS",
