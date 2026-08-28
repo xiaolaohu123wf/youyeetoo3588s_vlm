@@ -36,6 +36,7 @@ from tts.sentence_split import (
 )
 from tts.tts_engine import TtsConfig, TtsEngine
 from tts.tts_queue import TtsQueue
+from tts.voice_settings import VoiceSettingsManager, is_voice_settings_query
 
 LOG = logging.getLogger("orchestrator")
 
@@ -152,31 +153,62 @@ class Orchestrator:
         self.system_prompt = (cfg.get("system_prompt") or "").strip()
         self._chat_turns: list[tuple[str, str]] = []
         self._llm_last_turn_at = 0.0
-        self.vad_stream = VadStream(self.vad_config, self.vad_queue)
+        self.voice_settings = VoiceSettingsManager.from_config(tts_cfg)
         self.tts_queue = TtsQueue(
-            TtsEngine(
-                TtsConfig(
-                    backend=str(tts_cfg.get("backend", "matcha")),
-                    model_dir=tts_cfg.get("model_dir", "/userdata/voice/matcha-icefall-zh-baker"),
-                    vocoder=tts_cfg.get("vocoder", "/userdata/voice/vocos-22khz-univ.onnx"),
-                    rule_fsts=list(tts_cfg.get("rule_fsts") or []),
-                    sherpa_bin=tts_cfg.get(
-                        "sherpa_bin",
-                        "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts",
-                    ),
-                    sherpa_lib=tts_cfg.get(
-                        "sherpa_lib",
-                        "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/lib",
-                    ),
-                    num_threads=int(tts_cfg.get("num_threads", 2)),
-                    sid=int(tts_cfg.get("sid", 0)),
-                    speed=float(tts_cfg.get("speed", 1.0)),
-                    max_chars=int(tts_cfg.get("max_chars", 80)),
-                )
-            ),
+            TtsEngine(self._tts_config_from_voice()),
             merge_max_chars=int(tts_cfg.get("merge_max_chars", 40)),
         )
+        self.vad_stream = VadStream(self.vad_config, self.vad_queue)
         self._loop: asyncio.AbstractEventLoop | None = None
+
+    def _tts_config_from_voice(self) -> TtsConfig:
+        tts_cfg = self.cfg.get("tts") or {}
+        profile = self.voice_settings.active_profile()
+        rt = self.voice_settings.runtime
+        return TtsConfig(
+            backend=profile.backend,
+            model_dir=profile.model_dir,
+            model_file=profile.model_file,
+            vocoder=profile.vocoder or self.voice_settings.default_vocoder,
+            rule_fsts=list(profile.rule_fsts or tts_cfg.get("rule_fsts") or []),
+            sherpa_bin=tts_cfg.get(
+                "sherpa_bin",
+                "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts",
+            ),
+            sherpa_lib=tts_cfg.get(
+                "sherpa_lib",
+                "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/lib",
+            ),
+            num_threads=int(tts_cfg.get("num_threads", 2)),
+            sid=profile.sid,
+            speed=rt.speed,
+            noise_scale=float(
+                profile.noise_scale
+                if profile.noise_scale is not None
+                else tts_cfg.get("noise_scale", 0.667)
+            ),
+            max_chars=int(tts_cfg.get("max_chars", 80)),
+        )
+
+    async def _sync_tts_from_voice_settings(self) -> None:
+        await self.tts_queue.reconfigure(self._tts_config_from_voice())
+        p = self.voice_settings.active_profile()
+        rt = self.voice_settings.runtime
+        LOG.info(
+            "[voice] synced tts voice=%s backend=%s sid=%d model=%s",
+            rt.voice_id,
+            p.backend,
+            p.sid,
+            p.model_path(),
+        )
+        await self.emit(
+            {
+                "type": "voice_settings",
+                "voice_id": rt.voice_id,
+                "label": p.label,
+                "speed": rt.speed,
+            }
+        )
 
     async def emit(self, event: dict[str, Any]) -> None:
         await self.event_bus.publish(event)
@@ -357,15 +389,21 @@ class Orchestrator:
 
     def _build_llm_prompt(self, user_text: str) -> str:
         parts: list[str] = []
-        if self.system_prompt:
-            parts.append(self.system_prompt)
+        system = self.system_prompt
+        voice_block = self.voice_settings.describe_for_prompt()
+        if system and voice_block:
+            parts.append(f"{system}\n\n{voice_block}")
+        elif system:
+            parts.append(system)
+        elif voice_block:
+            parts.append(voice_block)
         for user, assistant in self._chat_turns[-self.history_max_turns :]:
             parts.append(f"用户：{user}\n小揽：{assistant}")
         parts.append(f"用户：{user_text}\n小揽：")
         return "\n\n".join(parts)
 
     def _record_chat_turn(self, user: str, assistant: str) -> None:
-        text = assistant.strip()
+        text = clean_llm_reply(user, (assistant or "").strip())
         if not text:
             return
         self._chat_turns.append((user, text))
@@ -374,17 +412,36 @@ class Orchestrator:
         self._llm_last_turn_at = time.monotonic()
         LOG.info("[llm] transcript stored (%d/%d turns)", len(self._chat_turns), self.history_max_turns)
 
+    async def _emit_reply_final(self, text: str) -> None:
+        text = (text or "").strip()
+        if text:
+            await self.emit({"type": "reply_final", "text": text})
+
     async def _speak_turn(self, text: str) -> None:
+        await self._emit_reply_final(text)
         await self._speak_extracted(text, canned=True)
 
     async def _run_llm(self, prompt: str) -> None:
         user_prompt = prompt
         self.set_state(AgentState.LLM)
 
+        voice_reply = self.voice_settings.try_rule_command(user_prompt)
+        if voice_reply is None and is_voice_settings_query(user_prompt):
+            LOG.info("[voice] fuzzy voice query (rule miss): %s", user_prompt[:48])
+            voice_reply = self.voice_settings.describe_for_user()
+        if voice_reply:
+            LOG.info("[voice] rule command: %s", voice_reply[:48])
+            await self._sync_tts_from_voice_settings()
+            await self._emit_reply_final(voice_reply)
+            await self._speak_extracted(voice_reply, canned=True)
+            self._record_chat_turn(user_prompt, voice_reply)
+            return
+
         if should_skip_llm(user_prompt):
             speak = canned_reply_for(user_prompt) or persona_reply_for(user_prompt)
             LOG.info("[llm] fast-path (skip LLM): %s", speak[:48])
-            await self._speak_turn(speak)
+            await self._emit_reply_final(speak)
+            await self._speak_extracted(speak, canned=True)
             return
 
         await self._prepare_llm_call()
@@ -404,7 +461,7 @@ class Orchestrator:
             if self._tts_abort:
                 return
             buffer["text"] += piece
-            if is_robotic_reply(buffer["text"]):
+            if is_robotic_reply(buffer["text"], user_prompt):
                 turn_tainted["v"] = True
             asyncio.run_coroutine_threadsafe(
                 self.emit({"type": "llm_token", "text": piece}),
@@ -419,31 +476,40 @@ class Orchestrator:
                 sock_path=self.socket_path,
                 max_new_tokens=self.max_new_tokens,
             )
-            full = clean_llm_reply(user_prompt, reply["text"])
+            raw = reply["text"]
+            full = clean_llm_reply(user_prompt, raw)
+            if len(full) + 20 < len(raw.strip()):
+                LOG.info("[llm] stripped transcript echo (%d -> %d chars)", len(raw.strip()), len(full))
+            spoken, _settings_applied = self.voice_settings.parse_and_strip_llm_tag(full)
+            if _settings_applied:
+                LOG.info("[voice] llm tag applied")
+                await self._sync_tts_from_voice_settings()
             need_fallback = (
-                not full.strip()
+                not spoken.strip()
                 or turn_tainted["v"]
-                or is_robotic_reply(full)
-                or is_spurious_name_reply(user_prompt, full)
-                or is_off_topic_reply(user_prompt, full)
+                or is_robotic_reply(spoken, user_prompt)
+                or is_spurious_name_reply(user_prompt, spoken)
+                or is_off_topic_reply(user_prompt, spoken)
             )
-            spoken = ""
+            spoken_out = ""
             if not self._tts_abort and need_fallback:
                 await self.tts_queue.discard_pending()
                 speak = persona_reply_for(user_prompt)
-                spoken = speak
+                spoken_out = speak
                 LOG.info("[llm] persona fallback: %s", speak[:48])
+                await self._emit_reply_final(spoken_out)
                 await self._speak_extracted(speak, canned=True)
             elif not self._tts_abort:
-                spoken = full
-                await self._speak_extracted(full, canned=False)
-            if not self._tts_abort and spoken.strip():
-                self._record_chat_turn(user_prompt, spoken)
+                spoken_out = spoken
+                await self._emit_reply_final(spoken_out)
+                await self._speak_extracted(spoken, canned=False)
+            if not self._tts_abort and spoken_out.strip():
+                self._record_chat_turn(user_prompt, spoken_out)
             LOG.info(
                 "[llm] reply (%d chars, ttft=%.3fs): %s",
-                len(full),
+                len(spoken),
                 reply.get("ttft_s") or 0,
-                full[:120],
+                spoken[:120],
             )
             if self._tts_abort:
                 LOG.info("[barge-in] skipped post-abort cooldown")

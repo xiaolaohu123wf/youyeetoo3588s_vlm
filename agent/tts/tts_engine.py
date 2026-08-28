@@ -18,6 +18,7 @@ VOICE_SCRIPTS = Path("/userdata/voice/scripts")
 class TtsConfig:
     backend: str = "matcha"
     model_dir: str = "/userdata/voice/matcha-icefall-zh-baker"
+    model_file: str = "model.onnx"
     vocoder: str = "/userdata/voice/vocos-22khz-univ.onnx"
     rule_fsts: list[str] = field(default_factory=list)
     sherpa_bin: str = "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts"
@@ -25,8 +26,9 @@ class TtsConfig:
     num_threads: int = 2
     sid: int = 0
     speed: float = 1.0
+    noise_scale: float = 0.667
     max_chars: int = 80
-    out_wav: str = "/tmp/agent_tts_out.wav"
+    out_wav: str = "/userdata/agent/run/agent_tts_out.wav"
 
 
 class TtsEngine:
@@ -37,6 +39,9 @@ class TtsEngine:
         self._play_proc: subprocess.Popen[bytes] | None = None
         self._play_lock = threading.Lock()
         self._play_stopped = False
+        self._init_native()
+
+    def _init_native(self) -> None:
         try:
             from tts.sherpa_tts import SherpaOfflineTts, SherpaTtsConfig
 
@@ -44,17 +49,43 @@ class TtsEngine:
                 SherpaTtsConfig(
                     backend=self.cfg.backend,
                     model_dir=str(self.model_dir),
+                    model_file=self.cfg.model_file,
                     vocoder=self.cfg.vocoder,
                     rule_fsts=list(self.cfg.rule_fsts),
                     sherpa_lib=self.cfg.sherpa_lib,
                     num_threads=self.cfg.num_threads,
                     sid=self.cfg.sid,
                     speed=self.cfg.speed,
+                    noise_scale=self.cfg.noise_scale,
                 )
             )
             LOG.info("[tts] loaded %s model (persistent C API)", self.cfg.backend)
         except Exception as exc:
+            self._native = None
             LOG.warning("[tts] persistent engine unavailable (%s), using CLI", exc)
+
+    def reconfigure(self, cfg: TtsConfig) -> None:
+        prev = self.cfg
+        self.cfg = cfg
+        self.model_dir = Path(cfg.model_dir)
+        reload = (
+            prev.backend != cfg.backend
+            or prev.model_dir != cfg.model_dir
+            or prev.model_file != cfg.model_file
+            or prev.sid != cfg.sid
+            or prev.vocoder != cfg.vocoder
+            or list(prev.rule_fsts) != list(cfg.rule_fsts)
+        )
+        if self._native is not None:
+            if reload:
+                self._native.close()  # type: ignore[union-attr]
+                self._native = None
+                self._init_native()
+            else:
+                self._native.cfg.speed = cfg.speed  # type: ignore[union-attr]
+                self._native.cfg.noise_scale = cfg.noise_scale  # type: ignore[union-attr]
+        elif reload:
+            self._init_native()
 
     def _env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -94,13 +125,16 @@ class TtsEngine:
         else:
             cmd.extend(
                 [
-                    f"--vits-model={self.model_dir / 'model.onnx'}",
+                    f"--vits-model={self.model_dir / self.cfg.model_file}",
                     f"--vits-tokens={self.model_dir / 'tokens.txt'}",
                     f"--vits-lexicon={self.model_dir / 'lexicon.txt'}",
-                    f"--vits-dict-dir={self.model_dir / 'dict'}",
-                    f"--vits-length-scale={1.0 / max(self.cfg.speed, 0.1)}",
                 ]
             )
+            dict_dir = self.model_dir / "dict"
+            if dict_dir.is_dir():
+                cmd.append(f"--vits-dict-dir={dict_dir}")
+            if self.cfg.rule_fsts:
+                cmd.append(f"--tts-rule-fsts={self._rule_fsts_str()}")
         cmd.extend(
             [
                 f"--sid={self.cfg.sid}",

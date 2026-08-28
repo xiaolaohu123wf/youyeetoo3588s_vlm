@@ -54,6 +54,7 @@ rknn3_vlm_demo
 rknn_*_demo/lib/
 voice/sherpa-onnx-v1*/
 voice/vits-melo-tts*/
+voice/vits-zh-hf-fanchen-wnj/
 voice/sherpa-onnx-sense-voice*/
 voice/*.tar.bz2
 voice/*.tgz

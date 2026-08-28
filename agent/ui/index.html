@@ -127,24 +127,30 @@
       flex-direction: column;
       overflow: hidden;
     }
-    .card h2 {
+    .card.user-card {
       flex: 0 0 auto;
-      margin: 0 0 0.35rem;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
+      min-height: calc(1.05rem * 1.5 * 2 + 1.3rem);
+    }
+    .card.reply-card {
+      flex: 1 1 auto;
+      min-height: 0;
     }
     .card p {
       flex: 1 1 auto;
       margin: 0;
-      line-height: 1.45;
-      font-size: 0.95rem;
+      line-height: 1.5;
+      font-size: 1.05rem;
       word-break: break-word;
       overflow: hidden;
       display: -webkit-box;
       -webkit-box-orient: vertical;
-      -webkit-line-clamp: 8;
+    }
+    .card.user-card p {
+      -webkit-line-clamp: 2;
+    }
+    .card.reply-card p {
+      font-size: 1.1rem;
+      -webkit-line-clamp: 18;
     }
     .card p.hint {
       font-size: 0.72rem;
@@ -173,17 +179,11 @@
       </div>
     </div>
     <div class="cards">
-      <div class="card">
-        <h2>你说</h2>
+      <div class="card user-card">
         <p id="asr" class="hint">等待语音输入</p>
       </div>
-      <div class="card">
-        <h2>小揽</h2>
+      <div class="card reply-card">
         <p id="reply" class="hint">等待回复</p>
-      </div>
-      <div class="card">
-        <h2>正在播放</h2>
-        <p id="tts">—</p>
       </div>
     </div>
   </main>
@@ -192,7 +192,6 @@
     const stateEl = document.getElementById("state");
     const asrEl = document.getElementById("asr");
     const replyEl = document.getElementById("reply");
-    const ttsEl = document.getElementById("tts");
     const wsDot = document.getElementById("wsDot");
     const wsLabel = document.getElementById("wsLabel");
     const svcDot = document.getElementById("svcDot");
@@ -247,13 +246,6 @@
         if (msg.type === "state" && msg.value) {
           stateEl.textContent = STATE_ZH[msg.value] || msg.value;
           setSvc(msg.value !== "IDLE" ? "busy" : true, msg.value === "IDLE" ? "语音服务正常" : "对话进行中");
-          if (msg.value === "LISTEN" || msg.value === "ASR") {
-            llmBuf = "";
-            if (msg.value === "LISTEN") {
-              setContent(asrEl, "等待语音输入", true);
-              setContent(replyEl, "等待回复", true);
-            }
-          }
         }
         if (msg.type === "asr_final" && msg.text) {
           setContent(asrEl, msg.text, false);
@@ -265,7 +257,10 @@
           llmBuf += msg.text;
           setContent(replyEl, llmBuf, false);
         }
-        if (msg.type === "tts_sentence" && msg.text) setContent(ttsEl, msg.text, false);
+        if (msg.type === "reply_final" && msg.text) {
+          llmBuf = msg.text;
+          setContent(replyEl, msg.text, false);
+        }
       };
     }
     connect();

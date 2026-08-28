@@ -41,6 +41,7 @@ def normalize_user_text(text: str) -> str:
     text = _NAME_FIX.sub("小揽", text)
     text = _GREETING_NAME.sub("", text)
     text = _LEADING_JUNK.sub("", text)
+    text = re.sub(r"因色|音瑟|银色", "音色", text)
     m = _INTENT_START.search(text)
     if m and m.start() > 0 and m.start() <= 8:
         text = text[m.start() :]

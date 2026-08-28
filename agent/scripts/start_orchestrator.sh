@@ -41,12 +41,25 @@ if [[ ! -S /tmp/r1-llm.sock ]]; then
   bash "${AGENT_ROOT}/scripts/start_llm_daemon.sh" || true
 fi
 
-nohup python3 -m orchestrator.main \
-  --config "${AGENT_ROOT}/config/agent.yaml" \
-  --agent-root "${AGENT_ROOT}" \
-  >>"${LOG}" 2>&1 &
+_run_orchestrator() {
+  nohup python3 -m orchestrator.main \
+    --config "${AGENT_ROOT}/config/agent.yaml" \
+    --agent-root "${AGENT_ROOT}" \
+    >>"${LOG}" 2>&1 &
+  echo $!
+}
 
-new_pid=$!
+if [[ "$(id -u)" -eq 0 ]]; then
+  echo "[start] dropping to user youyeetoo (avoid TTS file permission issues)"
+  new_pid="$(sudo -u youyeetoo bash -c "
+    export AGENT_ROOT='${AGENT_ROOT}' PYTHONPATH='${PYTHONPATH}' LD_LIBRARY_PATH='${LD_LIBRARY_PATH}' MIC_CAPTURE_GAIN='${MIC_CAPTURE_GAIN}'
+    cd '${AGENT_ROOT}'
+    nohup python3 -m orchestrator.main --config '${AGENT_ROOT}/config/agent.yaml' --agent-root '${AGENT_ROOT}' >>'${LOG}' 2>&1 &
+    echo \$!
+  ")"
+else
+  new_pid="$(_run_orchestrator)"
+fi
 echo "${new_pid}" >"${PIDFILE}"
 sleep 2
 if kill -0 "${new_pid}" 2>/dev/null; then

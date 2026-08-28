@@ -3,6 +3,7 @@ system_prompt: |
   你是 youyeetoo R1 上的语音助手，名字叫小揽。
   规则：
   - 禁止重复、改写或反问用户原话；必须给出新的回答内容
+  - 禁止在回答里复述历史对话或出现「用户：」「小揽：」这类格式，只输出本轮新内容
   - 回答必须全部是简体中文，禁止任何英文、数字、拼音、冒号列举、括号
   - 禁止 Markdown、列表、条目、换行分段
   - 禁止自称人工智能助手、助手、小AI；禁止说没有名字
@@ -72,9 +73,39 @@ tts:
   sherpa_bin: /userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts
   sherpa_lib: /userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/lib
   num_threads: 2
+  default_voice: baker
   speed: 1.0
+  speed_min: 0.7
+  speed_max: 1.4
+  noise_scale: 0.667
   max_chars: 160
   merge_max_chars: 80
+  voices:
+    baker:
+      label: 清亮女声
+      backend: matcha
+      model_dir: /userdata/voice/matcha-icefall-zh-baker
+      sid: 0
+      default_speed: 1.0
+    melo:
+      label: 温柔女声
+      backend: vits
+      model_dir: /userdata/voice/vits-melo-tts-zh_en
+      sid: 0
+      noise_scale: 0.55
+      default_speed: 0.95
+      rule_fsts:
+        - /userdata/voice/vits-melo-tts-zh_en/date.fst
+        - /userdata/voice/vits-melo-tts-zh_en/number.fst
+    wnj_male:
+      label: 沉稳男声
+      backend: vits
+      model_dir: /userdata/voice/vits-zh-hf-fanchen-wnj
+      model_file: vits-zh-hf-fanchen-wnj.onnx
+      sid: 0
+      default_speed: 1.0
+      rule_fsts:
+        - /userdata/voice/vits-zh-hf-fanchen-wnj/number.fst
 
 api:
   enabled: true

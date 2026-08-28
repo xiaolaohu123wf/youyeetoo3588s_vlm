@@ -10,6 +10,7 @@ from tts.sentence_split import is_speakable, sanitize_tts_text
 from tts.tts_engine import TtsEngine
 
 LOG = logging.getLogger(__name__)
+TTS_RUN_DIR = Path("/userdata/agent/run")
 
 
 class TtsQueue:
@@ -107,6 +108,18 @@ class TtsQueue:
             return
         await self._wav_q.join()
 
+    async def reconfigure(self, cfg) -> None:
+        from tts.tts_engine import TtsConfig
+
+        assert isinstance(cfg, TtsConfig)
+        await asyncio.to_thread(self.engine.reconfigure, cfg)
+        LOG.info(
+            "[tts] reconfigured backend=%s sid=%d speed=%.2f",
+            cfg.backend,
+            cfg.sid,
+            cfg.speed,
+        )
+
     async def _synth_worker(self) -> None:
         while True:
             text = await self._text_q.get()
@@ -116,7 +129,8 @@ class TtsQueue:
                     return
                 if self._interrupted.is_set():
                     continue
-                path = Path(f"/tmp/agent_tts_{self._slot}.wav")
+                TTS_RUN_DIR.mkdir(parents=True, exist_ok=True)
+                path = TTS_RUN_DIR / f"tts_{self._slot}.wav"
                 self._slot += 1
                 t0 = time.monotonic()
                 wav = await asyncio.to_thread(self.engine.synthesize, text, str(path))

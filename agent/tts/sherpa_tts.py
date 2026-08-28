@@ -106,11 +106,13 @@ def _load_library(lib_dir: str) -> ctypes.CDLL:
 class SherpaTtsConfig:
     backend: str = "matcha"  # matcha | vits
     model_dir: str = "/userdata/voice/matcha-icefall-zh-baker"
+    model_file: str = "model.onnx"
     vocoder: str = "/userdata/voice/vocos-22khz-univ.onnx"
     rule_fsts: list[str] = field(default_factory=list)
     sherpa_lib: str = "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/lib"
     num_threads: int = 2
     sid: int = 0
+    noise_scale: float = 0.667
     speed: float = 1.0
 
 
@@ -146,14 +148,21 @@ class SherpaOfflineTts:
             if dict_dir.is_dir():
                 config.model.matcha.dict_dir = str(dict_dir).encode()
             config.model.matcha.length_scale = 1.0 / max(cfg.speed, 0.1)
+            config.model.matcha.noise_scale = float(cfg.noise_scale)
             if cfg.rule_fsts:
                 config.rule_fsts = ",".join(cfg.rule_fsts).encode()
         elif backend == "vits":
-            config.model.vits.model = str(self.model_dir / "model.onnx").encode()
+            model_path = self.model_dir / cfg.model_file
+            config.model.vits.model = str(model_path).encode()
             config.model.vits.lexicon = str(self.model_dir / "lexicon.txt").encode()
             config.model.vits.tokens = str(self.model_dir / "tokens.txt").encode()
-            config.model.vits.dict_dir = str(self.model_dir / "dict").encode()
+            dict_dir = self.model_dir / "dict"
+            if dict_dir.is_dir():
+                config.model.vits.dict_dir = str(dict_dir).encode()
             config.model.vits.length_scale = 1.0 / max(cfg.speed, 0.1)
+            config.model.vits.noise_scale = float(cfg.noise_scale)
+            if cfg.rule_fsts:
+                config.rule_fsts = ",".join(cfg.rule_fsts).encode()
         else:
             raise SherpaTtsError(f"unsupported TTS backend: {backend}")
 
