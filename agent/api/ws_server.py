@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+import asyncio
+import base64
 import contextlib
 import hashlib
 import logging
