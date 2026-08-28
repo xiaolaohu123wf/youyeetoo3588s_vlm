@@ -1065,7 +1065,7 @@ export default function R1VlmAgentRoadmap() {
       <Table
         headers={["链路", "说明", "板端命令", "通过判据", "备注"]}
         rows={E2E_THREE_FLOWS.map((r) => [...r])}
-        rowTone={["success", "success", "success", "info", "success", "warning"]}
+        rowTone={["success", "success", "success", "success", "info", "success", "warning"]}
         striped
       />
       <Grid columns={3} gap={16}>
