@@ -31,11 +31,15 @@ class VadConfig:
     min_speech_duration: float = 0.25
     max_speech_duration: float = 30.0
     alsa_device: str = "plughw:0,0"
+    capture_channels: int = 1
     min_segment_sec: float = 0.5
     speech_preroll_ms: int = 400
     arecord_period_size: int = 320
     arecord_buffer_size: int = 2560
     mic_capture_gain: int = 6
+    mic_arm: bool = True
+    route_guard: bool = True
+    pasuspender: bool = False
 
     @property
     def chunk_samples(self) -> int:
@@ -83,22 +87,28 @@ class VadStream:
         self._stop.set()
 
     async def run_live(self) -> None:
-        arm_mic(mic_gain=self.cfg.mic_capture_gain)
+        guard_task: asyncio.Task[None] | None = None
         guard_stop = asyncio.Event()
-        guard_task = asyncio.create_task(
-            mic_route_guard(guard_stop, mic_gain=self.cfg.mic_capture_gain)
-        )
+        if self.cfg.mic_arm:
+            arm_mic(mic_gain=self.cfg.mic_capture_gain)
+        if self.cfg.route_guard:
+            guard_task = asyncio.create_task(
+                mic_route_guard(guard_stop, mic_gain=self.cfg.mic_capture_gain)
+            )
         proc = await open_arecord(
             device=self.cfg.alsa_device,
             sample_rate=self.cfg.sample_rate,
+            channels=self.cfg.capture_channels,
             period_size=self.cfg.arecord_period_size,
             buffer_size=self.cfg.arecord_buffer_size,
+            pasuspender=self.cfg.pasuspender,
         )
         try:
             await self._consume_arecord(proc)
         finally:
             guard_stop.set()
-            await guard_task
+            if guard_task is not None:
+                await guard_task
             if proc.returncode is None:
                 proc.terminate()
                 await proc.wait()

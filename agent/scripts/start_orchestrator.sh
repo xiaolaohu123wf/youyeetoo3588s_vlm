@@ -8,6 +8,27 @@ LOG="${AGENT_ROOT}/logs/orchestrator.log"
 API_PORT="${AGENT_API_PORT:-8765}"
 
 source /userdata/voice/scripts/voice_hw_board.sh 2>/dev/null || true
+AUDIO_PROFILE="${AGENT_AUDIO_PROFILE:-auto}"
+_hw="${VOICE_ROOT:-/userdata/voice}/scripts"
+case "${AUDIO_PROFILE}" in
+  fy_sp701)
+    source "${_hw}/fy_sp701_hw.sh" 2>/dev/null || true
+    echo "[start] audio profile: fy_sp701 (forced)"
+    ;;
+  board)
+    source "${_hw}/voice_hw_board.sh" 2>/dev/null || true
+    echo "[start] audio profile: board (forced)"
+    ;;
+  auto|*)
+    if lsusb 2>/dev/null | grep -qiE 'cafe:b20a|Timesintelli'; then
+      source "${_hw}/fy_sp701_hw.sh" 2>/dev/null || true
+      echo "[start] audio profile: auto → fy_sp701 USB detected"
+    else
+      source "${_hw}/voice_hw_board.sh" 2>/dev/null || true
+      echo "[start] audio profile: auto → board ES8388"
+    fi
+    ;;
+esac
 # Agent live mic: gain 8 clips loud syllables (e.g. 笑); 6 is safer for close-talk.
 export MIC_CAPTURE_GAIN="${AGENT_MIC_CAPTURE_GAIN:-6}"
 export PYTHONPATH="${AGENT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
@@ -64,7 +85,7 @@ echo "${new_pid}" >"${PIDFILE}"
 sleep 2
 if kill -0 "${new_pid}" 2>/dev/null; then
   echo "[start] orchestrator pid=${new_pid} log=${LOG}"
-  echo "[start] speak to onboard mic; watch: tail -f ${LOG}"
+  echo "[start] speak to mic (${AUDIO_PROFILE:-auto}); watch: tail -f ${LOG}"
 else
   echo "[start] FAILED — process exited; tail ${LOG}" >&2
   rm -f "${PIDFILE}"

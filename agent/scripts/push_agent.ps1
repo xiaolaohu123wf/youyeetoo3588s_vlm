@@ -33,6 +33,7 @@ Push-PyTree "$Root\agent\asr" "$Board/asr"
 Push-PyTree "$Root\agent\orchestrator" "$Board/orchestrator"
 Push-PyTree "$Root\agent\llm" "$Board/llm"
 Push-PyTree "$Root\agent\tts" "$Board/tts"
+Push-PyTree "$Root\agent\audio" "$Board/audio"
 Push-PyTree "$Root\agent\api" "$Board/api"
 
 Get-ChildItem "$Root\agent\scripts" -Filter "*.py" | ForEach-Object {

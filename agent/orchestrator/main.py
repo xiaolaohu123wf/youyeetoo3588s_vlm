@@ -14,6 +14,7 @@ if str(_AGENT_ROOT) not in sys.path:
 
 from api.event_bus import EventBus
 from api.ws_server import run_ws_server
+from audio.audio_profile import AudioProfileManager
 from asr.asr_engine import AsrEngine, AsrEngineConfig
 from asr.normalize import normalize_user_text
 from asr.sense_voice import SenseVoiceConfig
@@ -98,6 +99,12 @@ class Orchestrator:
         self.listen_cooldown_sec = float(vad_cfg.get("listen_cooldown_sec", 0.5))
         self.listen_cooldown_skip_max_sec = float(vad_cfg.get("listen_cooldown_skip_max_sec", 0.45))
 
+        audio_override = (cfg.get("_cli_audio_profile") or "").strip() or None
+        self.audio_profile = AudioProfileManager.from_config(
+            cfg, agent_root, cli_override=audio_override
+        )
+        self.audio_profile.apply_to_vad(self.vad_config)
+
         utterance = paths.get("utterance_wav", str(agent_root / "run" / "last_utterance.wav"))
         asr_backend = str(asr_cfg.get("backend", "sense_voice")).strip().lower()
         self.asr_engine = AsrEngine(
@@ -154,8 +161,10 @@ class Orchestrator:
         self._chat_turns: list[tuple[str, str]] = []
         self._llm_last_turn_at = 0.0
         self.voice_settings = VoiceSettingsManager.from_config(tts_cfg)
+        tts_engine = TtsEngine(self._tts_config_from_voice())
+        tts_engine.set_playback_env(self.audio_profile.playback_env())
         self.tts_queue = TtsQueue(
-            TtsEngine(self._tts_config_from_voice()),
+            tts_engine,
             merge_max_chars=int(tts_cfg.get("merge_max_chars", 40)),
         )
         self.vad_stream = VadStream(self.vad_config, self.vad_queue)
@@ -171,6 +180,7 @@ class Orchestrator:
             model_file=profile.model_file,
             vocoder=profile.vocoder or self.voice_settings.default_vocoder,
             rule_fsts=list(profile.rule_fsts or tts_cfg.get("rule_fsts") or []),
+            play_script=self.audio_profile.active.play_script,
             sherpa_bin=tts_cfg.get(
                 "sherpa_bin",
                 "/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts",
@@ -192,6 +202,7 @@ class Orchestrator:
 
     async def _sync_tts_from_voice_settings(self) -> None:
         await self.tts_queue.reconfigure(self._tts_config_from_voice())
+        self.tts_queue.engine.set_playback_env(self.audio_profile.playback_env())
         p = self.voice_settings.active_profile()
         rt = self.voice_settings.runtime
         LOG.info(
@@ -521,6 +532,15 @@ class Orchestrator:
         (self.agent_root / "logs").mkdir(parents=True, exist_ok=True)
         self.set_state(AgentState.IDLE)
         self.ping_llm_daemon()
+        await self.emit(
+            {
+                "type": "audio_profile",
+                "profile_id": self.audio_profile.active.profile_id,
+                "label": self.audio_profile.active.label,
+                "capture_device": self.audio_profile.active.capture_device,
+                "play_script": self.audio_profile.active.play_script,
+            }
+        )
         await self.tts_queue.start()
         if self.api_enabled:
             try:
@@ -544,6 +564,7 @@ def main() -> None:
     parser.add_argument("--config", default="/userdata/agent/config/agent.yaml")
     parser.add_argument("--agent-root", default="/userdata/agent")
     parser.add_argument("--inject-wav", help="offline test: feed wav instead of mic")
+    parser.add_argument("--audio-profile", choices=("auto", "board", "fy_sp701"), help="audio I/O profile")
     parser.add_argument("--no-partial", action="store_true", help="disable partial ASR (faster offline test)")
     parser.add_argument("--no-tts", action="store_true", help="skip TTS playback")
     parser.add_argument("--log-level", default="INFO")
@@ -554,6 +575,8 @@ def main() -> None:
         sys.path.insert(0, str(agent_root))
 
     cfg = load_yaml(args.config)
+    if args.audio_profile:
+        cfg["_cli_audio_profile"] = args.audio_profile
     setup_logging(args.log_level)
     LOG.info("=== R1 orchestrator Phase E ===")
     orch = Orchestrator(cfg, agent_root)

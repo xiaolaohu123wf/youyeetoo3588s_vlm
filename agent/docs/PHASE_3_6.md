@@ -45,18 +45,21 @@ bash /userdata/agent/scripts/phase_3_6_test.sh --live    # 末尾跑 ASR→TTS �
 - 喇叭与 MIC 不同腔体或密封，避免结构传声
 - MIC 远离喇叭震动；硅胶套减震
 
-## 接入 Agent（可选）
+## 接入 Agent（已集成）
 
-当前 `agent.yaml` 默认 `vad.alsa_device: plughw:0,0`（板载麦）。
+`agent.yaml` 默认 `audio.default_profile: auto` — USB FY-SP701 插入时自动用 `plughw:1,0` + `fy_sp701_play.sh`，否则板载 ES8388。
 
-使用 FY-SP701 作全链路 I/O 时：
+```bash
+# 强制 USB 模组
+AGENT_AUDIO_PROFILE=fy_sp701 bash /userdata/agent/scripts/start_orchestrator.sh
 
-```yaml
-vad:
-  alsa_device: plughw:1,0   # 或 fy_sp701_detect.sh 输出的 card
+# 强制板载
+AGENT_AUDIO_PROFILE=board bash /userdata/agent/scripts/start_orchestrator.sh
 ```
 
-TTS 播放需改 `play_wav.sh` 或 orchestrator 调用 `fy_sp701_play.sh`（待 P3.6 验收通过后集成）。
+日志应出现：`[audio] profile=fy_sp701 ... capture=plughw:1,0` · `[vad] listening on plughw:1,0`
+
+持久化：`/userdata/agent/run/user_settings.json`（GUI 设置 Modal 后续写入）
 
 ## 故障排查
 

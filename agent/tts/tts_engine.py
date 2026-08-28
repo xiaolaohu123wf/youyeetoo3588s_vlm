@@ -29,6 +29,7 @@ class TtsConfig:
     noise_scale: float = 0.667
     max_chars: int = 80
     out_wav: str = "/userdata/agent/run/agent_tts_out.wav"
+    play_script: str = "play_wav.sh"
 
 
 class TtsEngine:
@@ -39,6 +40,7 @@ class TtsEngine:
         self._play_proc: subprocess.Popen[bytes] | None = None
         self._play_lock = threading.Lock()
         self._play_stopped = False
+        self._playback_env: dict[str, str] = {}
         self._init_native()
 
     def _init_native(self) -> None:
@@ -86,6 +88,9 @@ class TtsEngine:
                 self._native.cfg.noise_scale = cfg.noise_scale  # type: ignore[union-attr]
         elif reload:
             self._init_native()
+
+    def set_playback_env(self, env: dict[str, str]) -> None:
+        self._playback_env = dict(env)
 
     def _env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -156,8 +161,9 @@ class TtsEngine:
         last_in_utterance: bool = True,
         utterance_gain: float | None = None,
     ) -> float | None:
-        play_script = VOICE_SCRIPTS / "play_wav.sh"
+        play_script = VOICE_SCRIPTS / self.cfg.play_script
         env = os.environ.copy()
+        env.update(self._playback_env)
         env["PLAYBACK_AGENT_TTS"] = "1"
         env.setdefault("PLAYBACK_BUFFER_US", "160000")
         if continuation:
