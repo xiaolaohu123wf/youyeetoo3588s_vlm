@@ -12,6 +12,9 @@ from typing import Any
 
 LOG = logging.getLogger(__name__)
 VOICE_SCRIPTS = Path("/userdata/voice/scripts")
+USB_PCM_MAX = 70
+SPEAKER_GAIN_MIN = 0.5
+SPEAKER_GAIN_MAX = 4.0
 
 
 @dataclass
@@ -29,6 +32,7 @@ class AudioProfile:
     playback_env: dict[str, str] = field(default_factory=dict)
     vad_overrides: dict[str, Any] = field(default_factory=dict)
     usb_mic_volume: int | None = None
+    usb_pcm_volume: int = 70
 
     def play_script_path(self) -> Path:
         return VOICE_SCRIPTS / self.play_script
@@ -86,15 +90,15 @@ def detect_fy_sp701_card() -> int | None:
     cards = Path("/proc/asound/cards")
     if not cards.is_file():
         return None
-    for line in cards.read_text(encoding="utf-8", errors="replace").splitlines():
+    text = cards.read_text(encoding="utf-8", errors="replace")
+    for line in text.splitlines():
         if "USB" not in line:
             continue
-        m = re.match(r"\s*(\d+)\s+\[", line)
-        if not m:
+        if not re.search(r"Timesintelli|USB Audio Device|USB-Audio", line, re.I):
             continue
-        idx = int(m.group(1))
-        if idx != 0:
-            return idx
+        m = re.match(r"\s*(\d+)\s+\[", line)
+        if m:
+            return int(m.group(1))
     return None
 
 
@@ -119,6 +123,7 @@ def _profile_from_dict(profile_id: str, raw: dict[str, Any]) -> AudioProfile:
     playback_env = raw.get("playback_env") or {}
     vad_overrides = raw.get("vad") or raw.get("vad_overrides") or {}
     usb_vol = raw.get("usb_mic_volume")
+    pcm_vol = raw.get("usb_pcm_volume")
     return AudioProfile(
         profile_id=profile_id,
         label=str(raw.get("label", profile_id)),
@@ -133,6 +138,7 @@ def _profile_from_dict(profile_id: str, raw: dict[str, Any]) -> AudioProfile:
         playback_env={str(k): str(v) for k, v in playback_env.items()},
         vad_overrides={str(k): v for k, v in vad_overrides.items()},
         usb_mic_volume=int(usb_vol) if usb_vol is not None else None,
+        usb_pcm_volume=int(pcm_vol) if pcm_vol is not None else 70,
     )
 
 
@@ -163,6 +169,7 @@ FY_SP701_DEFAULTS: dict[str, Any] = {
         "PLAYBACK_AGENT_TTS": "1",
     },
     "usb_mic_volume": 20000,
+    "usb_pcm_volume": 70,
     "vad": {
         "threshold": 0.58,
         "min_silence_duration": 0.68,
@@ -190,9 +197,22 @@ class AudioProfileManager:
         self.settings_path = settings_path
         self.profiles_raw = profiles_raw
 
-    def apply_user_overrides(self, *, usb_mic_volume: int | None = None, vad: dict[str, Any] | None = None) -> None:
+    def apply_user_overrides(
+        self,
+        *,
+        usb_mic_volume: int | None = None,
+        speaker_volume: int | None = None,
+        vad: dict[str, Any] | None = None,
+    ) -> None:
         if usb_mic_volume is not None:
             self.active.usb_mic_volume = max(0, min(24660, int(usb_mic_volume)))
+        if speaker_volume is not None:
+            pct = max(0, min(100, int(speaker_volume)))
+            self.active.usb_pcm_volume = speaker_percent_to_pcm(pct)
+            env = dict(self.active.playback_env)
+            env["PLAYBACK_PCM_VOLUME"] = str(self.active.usb_pcm_volume)
+            env["PLAYBACK_GAIN"] = f"{speaker_percent_to_gain(pct):.2f}"
+            self.active.playback_env = env
         if vad:
             merged = dict(self.active.vad_overrides)
             merged.update(vad)
@@ -310,25 +330,84 @@ class AudioProfileManager:
                     setattr(vad_cfg, key, val)
 
     def apply_usb_mixer(self) -> None:
-        vol = self.active.usb_mic_volume
         card = detect_fy_sp701_card()
-        if vol is None or card is None:
+        if card is None:
             return
-        vol = max(0, min(24660, int(vol)))
+        mic_vol = self.active.usb_mic_volume
+        if mic_vol is not None:
+            mic_vol = max(0, min(24660, int(mic_vol)))
+            # FY-SP701 exposes Mic,0 (stereo) + Mic,1 (mono array path). Mono arecord
+            # is silent unless both capture switches are enabled.
+            subprocess.run(
+                ["amixer", "-c", str(card), "cset", "numid=5", "on,on"],
+                capture_output=True,
+                check=False,
+            )
+            subprocess.run(
+                ["amixer", "-c", str(card), "cset", "numid=6", "on"],
+                capture_output=True,
+                check=False,
+            )
+            subprocess.run(
+                ["amixer", "-c", str(card), "cset", "numid=7", f"{mic_vol},{mic_vol}"],
+                capture_output=True,
+                check=False,
+            )
+            subprocess.run(
+                ["amixer", "-c", str(card), "cset", "numid=8", str(mic_vol)],
+                capture_output=True,
+                check=False,
+            )
+        pcm_vol = max(0, min(USB_PCM_MAX, int(self.active.usb_pcm_volume)))
+        # FY-SP701 ships with PCM playback at 0; aplay succeeds but speaker is silent.
         subprocess.run(
-            ["amixer", "-c", str(card), "cset", "numid=7", f"{vol},{vol}"],
+            ["amixer", "-c", str(card), "cset", "numid=3", "on"],
             capture_output=True,
             check=False,
         )
         subprocess.run(
-            ["amixer", "-c", str(card), "cset", "numid=8", str(vol)],
+            ["amixer", "-c", str(card), "cset", "numid=4", str(pcm_vol)],
             capture_output=True,
             check=False,
         )
-        LOG.info("[audio] USB mic digital volume -> %d (card %d, was max 24660)", vol, card)
+        LOG.info(
+            "[audio] USB mic vol=%s pcm=%d (card %d)",
+            mic_vol if mic_vol is not None else "-",
+            pcm_vol,
+            card,
+        )
 
     def playback_env(self, base: dict[str, str] | None = None) -> dict[str, str]:
-        return self.active.load_hw_env(base)
+        env = self.active.load_hw_env(base)
+        if self.active.profile_id == "fy_sp701":
+            env["PLAYBACK_PCM_VOLUME"] = str(self.active.usb_pcm_volume)
+        return env
 
     def play_script(self) -> Path:
         return self.active.play_script_path()
+
+
+def speaker_percent_to_pcm(percent: int) -> int:
+    pct = max(0, min(100, int(percent)))
+    if pct <= 0:
+        return 0
+    return max(1, min(USB_PCM_MAX, round(pct * USB_PCM_MAX / 100)))
+
+
+def speaker_percent_to_gain(percent: int) -> float:
+    pct = max(0, min(100, int(percent)))
+    span = SPEAKER_GAIN_MAX - SPEAKER_GAIN_MIN
+    return SPEAKER_GAIN_MIN + (pct / 100.0) * span
+
+
+def speaker_pcm_to_percent(pcm: int) -> int:
+    pcm = max(0, min(USB_PCM_MAX, int(pcm)))
+    return max(0, min(100, round(pcm * 100 / USB_PCM_MAX)))
+
+
+def speaker_gain_to_percent(gain: float) -> int:
+    span = SPEAKER_GAIN_MAX - SPEAKER_GAIN_MIN
+    if span <= 0:
+        return 100
+    pct = (float(gain) - SPEAKER_GAIN_MIN) / span * 100.0
+    return max(0, min(100, round(pct)))

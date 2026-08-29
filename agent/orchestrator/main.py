@@ -16,7 +16,11 @@ if str(_AGENT_ROOT) not in sys.path:
 
 from api.event_bus import EventBus
 from api.ws_server import run_ws_server
-from audio.audio_profile import AudioProfileManager
+from audio.audio_profile import (
+    AudioProfileManager,
+    speaker_gain_to_percent,
+    speaker_pcm_to_percent,
+)
 from asr.asr_engine import AsrEngine, AsrEngineConfig
 from asr.normalize import normalize_user_text
 from asr.sense_voice import SenseVoiceConfig
@@ -117,6 +121,7 @@ class Orchestrator:
         )
         self.audio_profile.apply_user_overrides(
             usb_mic_volume=saved_user.usb_mic_volume,
+            speaker_volume=saved_user.speaker_volume,
             vad=saved_user.vad or None,
         )
         self.audio_profile.apply_to_vad(self.vad_config)
@@ -301,6 +306,13 @@ class Orchestrator:
             and self.state in (AgentState.IDLE, AgentState.LISTEN)
         )
 
+    def _speaker_volume_percent(self) -> int:
+        active = self.audio_profile.active
+        if active.profile_id == "fy_sp701":
+            return speaker_pcm_to_percent(active.usb_pcm_volume)
+        gain = float(active.playback_env.get("PLAYBACK_GAIN", "2.0"))
+        return speaker_gain_to_percent(gain)
+
     async def _build_settings_snapshot(self) -> dict[str, Any]:
         saved = self.user_settings.load()
         rt = self.voice_settings.runtime
@@ -333,6 +345,9 @@ class Orchestrator:
             "usb_mic_volume": self.audio_profile.active.usb_mic_volume or 20000,
             "usb_mic_volume_max": 24660,
             "usb_mic_supported": self.audio_profile.active.profile_id == "fy_sp701",
+            "speaker_volume": self._speaker_volume_percent(),
+            "speaker_volume_min": 0,
+            "speaker_volume_max": 100,
             "vad": {
                 "threshold": self.vad_config.threshold,
                 "min_silence_duration": self.vad_config.min_silence_duration,
@@ -368,6 +383,7 @@ class Orchestrator:
                 saved = self.user_settings.load()
                 self.audio_profile.apply_user_overrides(
                     usb_mic_volume=saved.usb_mic_volume,
+                    speaker_volume=saved.speaker_volume,
                     vad=saved.vad or None,
                 )
                 self.audio_profile.apply_to_vad(self.vad_config)
@@ -389,6 +405,13 @@ class Orchestrator:
             store_patch["usb_mic_volume"] = vol
             self.audio_profile.apply_user_overrides(usb_mic_volume=vol)
             self.audio_profile.apply_usb_mixer()
+
+        if "speaker_volume" in patch and patch["speaker_volume"] is not None:
+            pct = max(0, min(100, int(patch["speaker_volume"])))
+            store_patch["speaker_volume"] = pct
+            self.audio_profile.apply_user_overrides(speaker_volume=pct)
+            self.audio_profile.apply_usb_mixer()
+            self.tts_queue.engine.set_playback_env(self.audio_profile.playback_env())
 
         if "vad" in patch and isinstance(patch["vad"], dict):
             store_patch["vad"] = patch["vad"]
@@ -437,6 +460,12 @@ class Orchestrator:
                     with contextlib.suppress(Exception):
                         await live_task
                     LOG.info("[settings] VAD restarted after audio settings change")
+                    continue
+                if live_task.done():
+                    with contextlib.suppress(Exception):
+                        await live_task
+                    LOG.warning("[vad] capture stopped — retry in 3s")
+                    await asyncio.sleep(3)
                     continue
                 break
         finally:

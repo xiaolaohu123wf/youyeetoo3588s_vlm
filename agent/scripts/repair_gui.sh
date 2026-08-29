@@ -16,8 +16,10 @@ log "=== repair GUI $(date -Is) ==="
 
 export DISPLAY="${DISPLAY:-:0}"
 
-# Restore GNOME top bar if a prior failed launch hid it.
+# Restore GNOME top bar first — avoid black screen if Chromium fails.
 if command -v gdbus >/dev/null 2>&1; then
+  export DISPLAY="${DISPLAY:-:0}"
+  export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u "${USER_NAME}" 2>/dev/null || echo 1000)/bus}"
   gdbus call --session \
     --dest org.gnome.Shell \
     --object-path /org/gnome/Shell \

@@ -13,8 +13,10 @@ mkdir -p "$(dirname "${LOG}")"
 
 for sec in $(seq 1 "${TIMEOUT}"); do
   if lsusb 2>/dev/null | grep -qiE 'cafe:b20a|Timesintelli'; then
-    if grep -E '^[[:space:]]*[1-9][0-9]*[[:space:]]+\[.*USB' /proc/asound/cards >/dev/null 2>&1; then
-      card="$(grep -E '^[[:space:]]*[1-9][0-9]*[[:space:]]+\[.*USB' /proc/asound/cards | head -1 | sed -E 's/^[[:space:]]*([0-9]+).*/\1/')"
+    card="$(awk '/USB/ && /Timesintelli|USB Audio Device|USB-Audio/ {
+      gsub(/^ +/, "", $1); print $1; exit
+    }' /proc/asound/cards 2>/dev/null || true)"
+    if [[ -n "${card}" ]]; then
       log "detected card=${card} after ${sec}s"
       exit 0
     fi

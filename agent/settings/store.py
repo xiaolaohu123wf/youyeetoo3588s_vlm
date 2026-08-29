@@ -16,6 +16,7 @@ class UserSettings:
     voice_id: str | None = None
     speed: float | None = None
     usb_mic_volume: int | None = None
+    speaker_volume: int | None = None
     vad: dict[str, Any] = field(default_factory=dict)
 
 
@@ -38,6 +39,7 @@ class UserSettingsStore:
             voice_id=str(raw["voice_id"]) if raw.get("voice_id") else None,
             speed=float(raw["speed"]) if raw.get("speed") is not None else None,
             usb_mic_volume=int(raw["usb_mic_volume"]) if raw.get("usb_mic_volume") is not None else None,
+            speaker_volume=int(raw["speaker_volume"]) if raw.get("speaker_volume") is not None else None,
             vad=dict(vad) if isinstance(vad, dict) else {},
         )
 
@@ -59,6 +61,8 @@ class UserSettingsStore:
             data["speed"] = settings.speed
         if settings.usb_mic_volume is not None:
             data["usb_mic_volume"] = settings.usb_mic_volume
+        if settings.speaker_volume is not None:
+            data["speaker_volume"] = settings.speaker_volume
         if settings.vad:
             prev_vad = data.get("vad") if isinstance(data.get("vad"), dict) else {}
             merged_vad = dict(prev_vad)
@@ -82,6 +86,8 @@ class UserSettingsStore:
             current.speed = float(updates["speed"])
         if "usb_mic_volume" in updates and updates["usb_mic_volume"] is not None:
             current.usb_mic_volume = int(updates["usb_mic_volume"])
+        if "speaker_volume" in updates and updates["speaker_volume"] is not None:
+            current.speaker_volume = int(updates["speaker_volume"])
         if "vad" in updates and isinstance(updates["vad"], dict):
             merged = dict(current.vad)
             merged.update(updates["vad"])

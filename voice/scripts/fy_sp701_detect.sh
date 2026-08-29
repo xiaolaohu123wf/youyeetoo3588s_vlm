@@ -13,11 +13,9 @@ find_fy_sp701_card() {
       rest="${line#*[}"
       name="${rest%%]*}"
       if echo "${name} ${line}" | grep -qiE 'USB|Device|Timesintelli|Audio'; then
-        if [ "${idx}" != "0" ]; then
           echo "${idx}"
           return 0
         fi
-      fi
     done < /proc/asound/cards
   fi
 
@@ -29,10 +27,8 @@ find_fy_sp701_card() {
     name="${rest%%]*}"
     case "${name} ${line}" in
       *USB*Audio*|*USB*Device*)
-        if [ "${idx}" != "0" ]; then
-          echo "${idx}"
-          return 0
-        fi
+        echo "${idx}"
+        return 0
         ;;
     esac
   done < /proc/asound/cards

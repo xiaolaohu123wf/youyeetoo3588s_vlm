@@ -113,12 +113,11 @@ chromium_running() {
 }
 
 open_browser() {
-  # Chromium 91: --kiosk must be separate from URL; --app=URL is reliable on embedded GNOME.
+  local launcher="${AGENT_ROOT}/scripts/chromium_kiosk.sh"
   local flags=(
     --user-data-dir="${CHROMIUM_PROFILE}"
     --app="${URL}"
     --start-fullscreen
-    --disable-gpu
     --no-first-run
     --disable-infobars
     --disable-session-crashed-bubble
@@ -129,8 +128,12 @@ open_browser() {
     --disable-features=TranslateUI
     --class=XiaoLanVoice
   )
+  if [[ -x "${launcher}" ]]; then
+    /bin/bash "${launcher}" "${flags[@]}" >>"${GUI_LOG}" 2>&1 &
+    return 0
+  fi
   if [[ -x /usr/bin/chromium ]]; then
-    /usr/bin/chromium "${flags[@]}" >>"${GUI_LOG}" 2>&1 &
+    /usr/bin/chromium "${flags[@]}" --disable-gpu >>"${GUI_LOG}" 2>&1 &
     return 0
   fi
   if command -v chromium-browser >/dev/null 2>&1; then
@@ -156,15 +159,17 @@ fi
 start_http
 
 if open_browser; then
-  sleep 2
-  if chromium_running; then
-    hide_gnome_chrome
-    log "opened ${URL} profile=${CHROMIUM_PROFILE}"
-  else
-    show_gnome_chrome
-    notify "浏览器启动失败，已恢复桌面顶栏，见 ${GUI_LOG}"
-    exit 1
-  fi
+  for _ in $(seq 1 15); do
+    if chromium_running; then
+      hide_gnome_chrome
+      log "opened ${URL} profile=${CHROMIUM_PROFILE}"
+      exit 0
+    fi
+    sleep 0.4
+  done
+  show_gnome_chrome
+  notify "浏览器启动失败，已恢复桌面顶栏，见 ${GUI_LOG}"
+  exit 1
 else
   show_gnome_chrome
   notify "未找到可用浏览器，请手动打开 ${URL}"

@@ -24,6 +24,9 @@ else
 fi
 
 echo "[FY play] ▶ ${WAV} (${MODE:-normal}) on ${ALSA_DEVICE}" >&2
+# USB module defaults PCM playback to 0 — enable before every play.
+amixer -c "${FY_ALSA_CARD}" cset numid=3 on >/dev/null 2>&1 || true
+amixer -c "${FY_ALSA_CARD}" cset numid=4 "${PLAYBACK_PCM_VOLUME:-70}" >/dev/null 2>&1 || true
 APLAY_OPTS=()
 if [ -n "${PLAYBACK_BUFFER_US:-}" ]; then
   APLAY_OPTS+=(--buffer-time="${PLAYBACK_BUFFER_US}")
