@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>小揽 · 边缘多模态智能交互终端 — 硬件能力宣传白皮书</title>
+  <style>
+    @page { size: A4; margin: 18mm 18mm 22mm 18mm; }
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", "SimHei", sans-serif;
+      font-size: 11pt;
+      line-height: 1.65;
+      color: #1a1a1a;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 0 12mm 16mm;
+    }
+    .cover {
+      min-height: 260mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      page-break-after: always;
+      background: linear-gradient(165deg, #0a2540 0%, #145da0 45%, #1a1a2e 100%);
+      color: #fff;
+      margin: 0 -12mm;
+      padding: 24mm 20mm;
+    }
+    .cover .logo-slot {
+      width: 72mm; height: 28mm; border: 2px dashed rgba(255,255,255,0.45);
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-size: 10pt; color: rgba(255,255,255,0.7); margin-bottom: 18mm;
+    }
+    .cover h1 { font-size: 26pt; color: #fff; border: none; margin: 0 0 12px; }
+    .cover .subtitle { font-size: 15pt; font-weight: normal; opacity: 0.95; margin-bottom: 28mm; }
+    .cover .cover-meta { font-size: 10pt; line-height: 1.8; opacity: 0.85; }
+    .cover .cover-tag { margin-top: 20mm; font-size: 12pt; letter-spacing: 0.15em; }
+    .content-start { padding-top: 4mm; }
+    .print-header, .print-footer {
+      display: none;
+    }
+    h1 { font-size: 22pt; color: #0d3b66; border-bottom: 3px solid #0d3b66; padding-bottom: 8px; margin-top: 0; }
+    h2 { font-size: 14pt; color: #145da0; margin-top: 1.4em; page-break-after: avoid; }
+    h3 { font-size: 12pt; color: #333; margin-top: 1em; }
+    .meta { font-size: 10pt; color: #555; margin-bottom: 1.5em; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 10pt; }
+    th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; }
+    th { background: #e8f1f8; }
+    blockquote { margin: 0.8em 0; padding: 8px 14px; background: #f5f8fa; border-left: 4px solid #145da0; font-size: 10pt; }
+    pre { background: #f4f4f4; padding: 12px; font-size: 9pt; overflow-x: auto; border-radius: 4px; }
+    .tagline { text-align: center; font-size: 13pt; color: #0d3b66; margin: 2em 0; font-weight: bold; }
+    .footer { font-size: 9pt; color: #666; margin-top: 2em; border-top: 1px solid #ddd; padding-top: 10px; }
+    @media print {
+      body { padding: 0 0 14mm; }
+      h2 { page-break-after: avoid; }
+      .print-header, .print-footer { display: block; position: fixed; left: 0; right: 0; font-size: 8.5pt; color: #666; }
+      .print-header { top: 0; padding: 6mm 18mm 0; border-bottom: 1px solid #ddd; }
+      .print-footer { bottom: 0; padding: 0 18mm 6mm; border-top: 1px solid #ddd; text-align: center; }
+      .cover { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="print-header">小揽 · 边缘多模态智能交互终端｜硬件能力宣传白皮书（对外版 · 保密）</div>
+<div class="print-footer">仅供市场宣传 · 非工程对接 · 性能为典型场景表述 · 正式验收以合同规格书为准</div>
+
+<section class="cover">
+  <div class="logo-slot">此处放置企业 Logo</div>
+  <h1>小揽</h1>
+  <p class="subtitle">边缘多模态智能交互终端<br/>硬件能力宣传白皮书</p>
+  <p class="cover-meta">文档性质：市场宣传与客户交流<br/>版本：对外宣传 v1.1 · 2026</p>
+  <p class="cover-tag">能听 · 能说 · 能看 · 能懂</p>
+</section>
+
+<div class="content-start">
+<h1>小揽 · 边缘多模态智能交互终端</h1>
+<p style="font-size:14pt;color:#145da0;margin-top:-8px;"><strong>硬件能力宣传白皮书（对外版）</strong></p>
+
+<table class="meta">
+  <tr><th>文档性质</th><td>市场宣传与客户交流 · 非工程对接与 BOM 披露</td></tr>
+  <tr><th>产品名称</th><td>小揽（Xiao Lan）边缘多模态智能终端</td></tr>
+  <tr><th>适用场景</th><td>展厅、政务大厅、智慧办公、教育互动、品牌演示</td></tr>
+</table>
+
+<h2>1. 产品定位</h2>
+<p>小揽是一款面向<strong>私有化部署</strong>的边缘多模态交互终端：在同一台设备上完成<strong>听、说、看、答</strong>，无需依赖公网大模型即可实现流畅的中文对话与<strong>实时视觉理解</strong>，适合对<strong>数据安全、响应速度、现场稳定性</strong>要求高的客户场景。</p>
+<p>我们采用<strong>主控 + 独立 AI 加速</strong>的双层硬件架构，将「实时音视频交互」与「大模型推理」分层处理，既保证麦克风、扬声器、屏幕与网络摄像头的<strong>低延迟联动</strong>，又为视觉语言理解保留<strong>充足的专用算力</strong>，避免单芯片方案常见的「一推理就卡顿、一对话就掉帧」体验问题。</p>
+
+<h2>2. 核心硬件能力</h2>
+<h3>2.1 边缘算力</h3>
+<table>
+  <tr><th>能力维度</th><th>宣传要点</th></tr>
+  <tr><td>异构双芯</td><td>高性能应用处理器 + <strong>独立神经网络加速单元</strong>，专为大模型与多模态推理优化</td></tr>
+  <tr><td>端侧大模型</td><td>多模态视觉语言模型<strong>完整运行于本地</strong>，对话与「看图说话」数据不出域</td></tr>
+  <tr><td>推理体验</td><td>语音首响可达<strong>秒级以内</strong>；视觉理解链路经工程优化，<strong>显著优于</strong>传统「每次重新加载模型」方案</td></tr>
+  <tr><td>视频处理</td><td><strong>硬件级</strong>视频解码能力，支持主流 IPC 网络摄像机协议，长时间拉流稳定</td></tr>
+  <tr><td>语音全链路</td><td>端侧语音活动检测、流式识别与高质量中文合成，<strong>全时监听</strong>与<strong>随时打断</strong></td></tr>
+</table>
+<blockquote>具体芯片型号、内存容量、内部互连规格等属于供应链与交付细节，<strong>不在本宣传册范围</strong>；商务与定制项目另行提供《技术对接说明》。</blockquote>
+
+<h3>2.2 接口与扩展</h3>
+<table>
+  <tr><th>类型</th><th>能力描述</th></tr>
+  <tr><td>网络</td><td>千兆以太网，适配机房/展厅有线组网；局域网内手机、平板、PC <strong>浏览器即开即用</strong>控制台</td></tr>
+  <tr><td>调试与运维</td><td>支持 USB 直连维护通道，便于现场快速部署与恢复</td></tr>
+  <tr><td>人机交互</td><td>麦克风与扬声器可适配板载或外置；<strong>大屏 HDMI</strong> 全屏展示品牌控制台</td></tr>
+  <tr><td>视频输入</td><td>以<strong>专业级网络摄像机</strong>为主；兼容主流取流方式，支持<strong>不停机切换</strong>监控画面</td></tr>
+  <tr><td>开放接口</td><td>WebSocket 状态与控制能力，便于与客户大屏、中控系统二次集成</td></tr>
+</table>
+
+<h2>3. 成像与「看得懂」</h2>
+<p>小揽推荐搭配<strong>高灵敏度、大靶面 CMOS</strong> 的网络摄像机（<strong>800 万像素级、低照度优化</strong>感光平台），在典型室内环境下可获得<strong>清晰、稳定</strong>的画面源。</p>
+<table>
+  <tr><th>客户感知价值</th><th>说明</th></tr>
+  <tr><td>看得清</td><td>高分辨率成像，远近景、桌面物品、人物动作均可作为理解输入</td></tr>
+  <tr><td>连得稳</td><td>抗丢包传输策略，减少花屏与断流</td></tr>
+  <tr><td>问得快</td><td>场景理解与帧缓存策略，常见提问可<strong>近乎即时</strong>语音作答</td></tr>
+</table>
+<pre>网络摄像机 → 边缘视频接入与优化 → 本地多模态大模型 → 自然语言回答 → 语音播报
+                    ↑
+              Web 控制台实时画面与状态（免插件浏览器访问）</pre>
+
+<h2>4. 软件能力集</h2>
+<table>
+  <tr><th>模块</th><th>客户可感知的价值</th></tr>
+  <tr><td>多轮对话</td><td>中文口语交互，人设可配置，适合品牌口径与场景话术</td></tr>
+  <tr><td>视觉问答</td><td>针对当前画面提问，获得<strong>简短、准确</strong>的场景描述</td></tr>
+  <tr><td>控制台</td><td>Web 界面：实时画面、对话流、快捷指令、延时遥测、一键打断</td></tr>
+  <tr><td>主动关怀（可选）</td><td>基于画面变化的温和提醒，减少无效打扰</td></tr>
+  <tr><td>私有化</td><td>模型与业务数据部署在客户可控网络内</td></tr>
+  <tr><td>快速恢复</td><td>演示环境<strong>一键恢复工具包</strong>，缩短复位时间</td></tr>
+</table>
+
+<h2>5. 典型应用场景</h2>
+<ol>
+  <li><strong>品牌科技展厅</strong>：访客自然语言提问 + 指向桌面/产品，小揽<strong>看图即答</strong>并语音讲解。</li>
+  <li><strong>智慧前台 / 政务引导</strong>：大屏展示 + 语音咨询，降低人力峰值压力。</li>
+  <li><strong>智慧办公助理</strong>：工位环境<strong>可见即可问</strong>（需网络与相机部署配合）。</li>
+  <li><strong>教育与创新 Lab</strong>：展示端侧 AI 多模态闭环，强调<strong>低延迟与数据本地</strong>。</li>
+</ol>
+
+<h2>6. 体验指标（宣传口径）</h2>
+<table>
+  <tr><th>体验项</th><th>宣传表述</th></tr>
+  <tr><td>语音识别</td><td><strong>百毫秒级</strong>流式识别，边说边出字</td></tr>
+  <tr><td>对话首响</td><td><strong>数秒内</strong>听到首句回复</td></tr>
+  <tr><td>视觉问答</td><td>常见场景类问题<strong>约 1 秒量级</strong>语音反馈</td></tr>
+  <tr><td>打断播报</td><td>用户开口或一键打断，<strong>瞬间</strong>停止并重新聆听</td></tr>
+  <tr><td>换摄像头地址</td><td>控制台修改取流地址，<strong>无需重启整机服务</strong></td></tr>
+</table>
+
+<h2>7. 与云端方案的差异化</h2>
+<table>
+  <tr><th>对比维度</th><th>小揽边缘方案</th></tr>
+  <tr><td>数据路径</td><td>视觉与对话<strong>优先本地闭环</strong></td></tr>
+  <tr><td>时延</td><td>省却公网往返，交互<strong>更跟手</strong></td></tr>
+  <tr><td>稳定性</td><td>弱外网环境下仍可演示核心能力</td></tr>
+  <tr><td>成本可控</td><td>试点阶段流量与 API 成本<strong>可预期</strong></td></tr>
+</table>
+
+<h2>8. 交付与支持</h2>
+<ul>
+  <li><strong>标准交付</strong>：边缘主机 + 软件栈 + 部署脚本 + Web 控制台 + 演示 checklist。</li>
+  <li><strong>可选组件</strong>：网络摄像机、麦克风阵列、大屏（由集成商按现场选型）。</li>
+  <li><strong>深度定制</strong>：对接中控、定制话术、行业知识库等，需单独立项。</li>
+</ul>
+
+<h2>9. 声明</h2>
+<ol>
+  <li>本文档为<strong>市场宣传用途</strong>，硬件具体型号、固件版本及内部接口表<strong>不予公开</strong>。</li>
+  <li>性能与体验表述为<strong>典型场景目标</strong>，不构成计量认证或第三方检测报告。</li>
+  <li>正式投标、验收以双方签署的《技术规格书》与《验收测试用例》为准。</li>
+</ol>
+
+<p class="tagline">小揽 — 让边缘设备「能听、能说、能看、能懂」</p>
+<p class="footer">文档版本：对外宣传 v1.1 · 小揽边缘多模态智能交互终端</p>
+</div>
+
+</body>
+</html>
