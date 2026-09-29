@@ -1,0 +1,18 @@
+[Unit]
+Description=R1 RK3588 GPIO Safe Poweroff Monitor Service
+Documentation=https://github.com/Wangpengyu01/youyeetoo3588s_vlm
+After=network.target multi-user.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/userdata/agent
+ExecStart=/usr/bin/python3 /userdata/agent/scripts/gpio_poweroff_monitor.py --pin 39 --hold-time 1.5 --debounce 0.1 --action halt
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
