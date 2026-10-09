@@ -14,6 +14,8 @@ _AGENT_ROOT = Path(__file__).resolve().parent.parent
 if str(_AGENT_ROOT) not in sys.path:
     sys.path.insert(0, str(_AGENT_ROOT))
 
+from api.debug_audio import DebugAudioController, handle_debug_audio
+from api.debug_info import build_debug_snapshot, format_debug_snapshot
 from api.event_bus import EventBus
 from api.ws_server import run_ws_server
 from audio.audio_profile import (
@@ -71,6 +73,7 @@ class Orchestrator:
         self._speaking = False
         self._tts_abort = False
         self._vad_restart = asyncio.Event()
+        self._debug_vad_paused = False
 
         vad_cfg = cfg.get("vad") or {}
         asr_cfg = cfg.get("asr") or {}
@@ -193,6 +196,7 @@ class Orchestrator:
             merge_max_chars=int(tts_cfg.get("merge_max_chars", 40)),
         )
         self.vad_stream = VadStream(self.vad_config, self.vad_queue)
+        self.debug_audio = DebugAudioController(self)
         self._loop: asyncio.AbstractEventLoop | None = None
 
     def _tts_config_from_voice(self) -> TtsConfig:
@@ -298,6 +302,15 @@ class Orchestrator:
             await self.emit(await self._build_settings_snapshot())
         elif mtype == "settings_set":
             await self._apply_settings_patch(msg.get("patch") or {})
+        elif mtype == "debug_get":
+            snap = await asyncio.to_thread(build_debug_snapshot, self)
+            snap["text"] = format_debug_snapshot(snap)
+            await self.emit(snap)
+        elif mtype == "debug_audio":
+            result = await handle_debug_audio(self, msg)
+            result["type"] = "debug_audio_result"
+            result.update(self.debug_audio.status())
+            await self.emit(result)
 
     def _can_hot_swap_audio(self) -> bool:
         return (
@@ -440,6 +453,8 @@ class Orchestrator:
     async def run_vad_loop(self, inject_wav: str | None = None) -> None:
         try:
             while True:
+                while self._debug_vad_paused:
+                    await asyncio.sleep(0.25)
                 if inject_wav:
                     await self.vad_stream.run_wav_file(inject_wav)
                     break
@@ -467,9 +482,11 @@ class Orchestrator:
                     LOG.warning("[vad] capture stopped — retry in 3s")
                     await asyncio.sleep(3)
                     continue
-                break
+                LOG.error("[vad] unexpected loop exit — retry in 3s")
+                await asyncio.sleep(3)
         finally:
-            await self.vad_queue.put({"type": "shutdown"})
+            if not self._debug_vad_paused:
+                await self.vad_queue.put({"type": "shutdown"})
 
     async def _turn_worker(self) -> None:
         while True:
@@ -485,8 +502,9 @@ class Orchestrator:
             event = await self.vad_queue.get()
             etype = event.get("type")
             if etype == "shutdown":
-                LOG.info("[event] shutdown")
-                break
+                LOG.warning("[event] shutdown signal — restarting event loop")
+                self.set_state(AgentState.LISTEN)
+                continue
             if etype == "error":
                 LOG.error("[event] %s", event)
                 continue

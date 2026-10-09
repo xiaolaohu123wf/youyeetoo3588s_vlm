@@ -78,6 +78,136 @@
       line-height: 1.2;
     }
     .settings-btn:hover { background: #254a75; }
+    .debug-btn {
+      flex: 0 0 auto;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.4rem 0.95rem;
+      border-radius: 10px;
+      border: 1px solid #3dd68c66;
+      background: #1a3328;
+      color: var(--text);
+      cursor: pointer;
+      line-height: 1.2;
+    }
+    .debug-btn:hover { background: #214032; }
+    .modal.debug-modal {
+      width: min(100%, 920px);
+    }
+    .debug-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .debug-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .debug-badge {
+      font-size: 0.68rem;
+      padding: 0.18rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid #243044;
+      background: #0f1419;
+      color: var(--muted);
+    }
+    .debug-badge.ok { color: var(--ok); border-color: #3dd68c55; }
+    .debug-badge.bad { color: #ff7b72; border-color: #ff7b7255; }
+    .debug-pre {
+      margin: 0;
+      padding: 0.75rem 0.85rem;
+      background: #0b1016;
+      border: 1px solid #243044;
+      border-radius: 12px;
+      font-family: "DejaVu Sans Mono", "Consolas", monospace;
+      font-size: 0.62rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 62vh;
+      overflow: auto;
+      color: #d7dee8;
+    }
+    .debug-status {
+      min-height: 1rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 0.45rem;
+    }
+    .debug-audio-panel {
+      margin-bottom: 0.75rem;
+      padding: 0.75rem 0.85rem;
+      border: 1px solid #243044;
+      border-radius: 12px;
+      background: #121820;
+    }
+    .debug-audio-panel h3 {
+      margin: 0 0 0.55rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .debug-audio-note {
+      margin: 0 0 0.65rem;
+      font-size: 0.68rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .debug-audio-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.45rem;
+    }
+    .debug-audio-row label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .debug-audio-row input[type="number"] {
+      width: 3.2rem;
+      font: inherit;
+      font-size: 0.82rem;
+      padding: 0.25rem 0.35rem;
+      border-radius: 8px;
+      border: 1px solid #243044;
+      background: #0f1419;
+      color: var(--text);
+    }
+    .debug-audio-btn {
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9px;
+      border: 1px solid #4a6078;
+      background: #243044;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .debug-audio-btn:hover { background: #2d3f56; }
+    .debug-audio-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .debug-audio-btn.active {
+      background: #4a2518;
+      border-color: #ffb020;
+      color: #ffd699;
+    }
+    .debug-audio-status {
+      min-height: 1.1rem;
+      font-size: 0.7rem;
+      color: var(--warn);
+      line-height: 1.4;
+    }
     .volume-bar {
       display: flex;
       align-items: center;
@@ -310,6 +440,7 @@
     <div class="header-row">
       <h1>语音助手</h1>
       <div class="header-actions">
+        <button id="debugBtn" class="debug-btn" type="button">调试</button>
         <button id="settingsBtn" class="settings-btn" type="button">设置</button>
         <button id="exitBtn" class="exit-btn" type="button">退出</button>
       </div>
@@ -381,6 +512,33 @@
       </div>
     </div>
   </div>
+  <div id="debugModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal debug-modal" role="dialog" aria-labelledby="debugTitle">
+      <div class="debug-toolbar">
+        <h2 id="debugTitle">开发者调试</h2>
+        <div class="debug-badges" id="debugBadges"></div>
+      </div>
+      <p class="modal-note">Orchestrator / 音频 / ASR / TTS / LLM / 进程 / 系统 / 日志尾部。仅供开发排查。</p>
+      <div class="debug-audio-panel">
+        <h3>音频调试（绕过 ASR/TTS）</h3>
+        <p class="debug-audio-note">录音/回放/直通会暂时暂停语音助手聆听，完成后自动恢复。</p>
+        <div class="debug-audio-row">
+          <label>时长(秒)<input id="debugRecSec" type="number" min="1" max="30" value="5" /></label>
+          <button id="debugRecBtn" class="debug-audio-btn" type="button">录音</button>
+          <button id="debugPlayBtn" class="debug-audio-btn" type="button">回放</button>
+          <button id="debugPassBtn" class="debug-audio-btn" type="button">直通对话</button>
+        </div>
+        <div id="debugAudioStatus" class="debug-audio-status"></div>
+      </div>
+      <div id="debugStatus" class="debug-status">点击「刷新」获取最新信息。</div>
+      <pre id="debugBody" class="debug-pre">（尚未加载）</pre>
+      <div class="modal-actions">
+        <button id="debugCopy" class="btn-secondary" type="button">复制</button>
+        <button id="debugRefresh" class="btn-secondary" type="button">刷新</button>
+        <button id="debugClose" class="btn-primary" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
   <main>
     <div class="top-bar">
       <div id="state" class="state-big">—</div>
@@ -399,7 +557,8 @@
     </div>
   </main>
   <script>
-    const WS_URL = "ws://127.0.0.1:8765/ws";
+    const WS_HOST = location.hostname || "127.0.0.1";
+    const WS_URL = `ws://${WS_HOST}:8765/ws`;
     const stateEl = document.getElementById("state");
     const asrEl = document.getElementById("asr");
     const replyEl = document.getElementById("reply");
@@ -408,6 +567,19 @@
     const svcDot = document.getElementById("svcDot");
     const svcLabel = document.getElementById("svcLabel");
     const settingsBtn = document.getElementById("settingsBtn");
+    const debugBtn = document.getElementById("debugBtn");
+    const debugModal = document.getElementById("debugModal");
+    const debugBody = document.getElementById("debugBody");
+    const debugStatus = document.getElementById("debugStatus");
+    const debugBadges = document.getElementById("debugBadges");
+    const debugRefresh = document.getElementById("debugRefresh");
+    const debugClose = document.getElementById("debugClose");
+    const debugCopy = document.getElementById("debugCopy");
+    const debugRecSec = document.getElementById("debugRecSec");
+    const debugRecBtn = document.getElementById("debugRecBtn");
+    const debugPlayBtn = document.getElementById("debugPlayBtn");
+    const debugPassBtn = document.getElementById("debugPassBtn");
+    const debugAudioStatus = document.getElementById("debugAudioStatus");
     const settingsModal = document.getElementById("settingsModal");
     const settingsCancel = document.getElementById("settingsCancel");
     const settingsSave = document.getElementById("settingsSave");
@@ -434,6 +606,8 @@
     let settingsDraft = null;
     let speakerSaveTimer = null;
     let speakerSyncLock = false;
+    let debugAudioBusy = false;
+    let debugPassthrough = false;
 
     const STATE_ZH = {
       IDLE: "空闲",
@@ -523,6 +697,94 @@
       settingsModal.setAttribute("aria-hidden", "true");
     }
 
+    function setDebugAudioUi() {
+      debugRecBtn.disabled = debugAudioBusy || debugPassthrough;
+      debugPlayBtn.disabled = debugAudioBusy || debugPassthrough;
+      debugPassBtn.disabled = debugAudioBusy;
+      debugPassBtn.textContent = debugPassthrough ? "停止直通" : "直通对话";
+      debugPassBtn.classList.toggle("active", debugPassthrough);
+    }
+
+    function sendDebugAudio(action, extra = {}) {
+      if (!wsRef || wsRef.readyState !== WebSocket.OPEN) {
+        debugAudioStatus.textContent = "未连接语音服务。";
+        return;
+      }
+      debugAudioBusy = action === "record";
+      setDebugAudioUi();
+      debugAudioStatus.textContent = action === "record"
+        ? `录音中（${extra.seconds || 5}s）…`
+        : action === "play"
+          ? "回放中…"
+          : action === "passthrough_start"
+            ? "正在开启直通…"
+            : action === "passthrough_stop"
+              ? "正在停止直通…"
+              : "处理中…";
+      wsRef.send(JSON.stringify({ type: "debug_audio", action, ...extra }));
+    }
+
+    function applyDebugAudioResult(msg) {
+      debugAudioBusy = false;
+      debugPassthrough = !!msg.passthrough;
+      setDebugAudioUi();
+      if (msg.message) {
+        debugAudioStatus.textContent = msg.message;
+      } else if (!msg.ok) {
+        debugAudioStatus.textContent = msg.error || "操作失败";
+      }
+      if (msg.analysis && msg.analysis.lines) {
+        debugAudioStatus.textContent += " · " + (msg.analysis.verdict || msg.analysis.summary || "");
+      }
+    }
+
+    function openDebug() {
+      debugModal.classList.add("open");
+      debugModal.setAttribute("aria-hidden", "false");
+      refreshDebug();
+    }
+
+    function closeDebug() {
+      debugModal.classList.remove("open");
+      debugModal.setAttribute("aria-hidden", "true");
+    }
+
+    function renderDebugBadges(snap) {
+      debugBadges.innerHTML = "";
+      const add = (label, ok) => {
+        const el = document.createElement("span");
+        el.className = "debug-badge " + (ok ? "ok" : "bad");
+        el.textContent = label;
+        debugBadges.appendChild(el);
+      };
+      const agent = snap.agent || {};
+      const proc = snap.processes || {};
+      const llm = snap.llm || {};
+      add(`状态 ${agent.state || "?"}`, agent.state === "LISTEN" || agent.state === "IDLE");
+      add(`arecord ${proc.arecord ? "OK" : "OFF"}`, !!proc.arecord);
+      add(`LLM ${llm.ping_ok ? "OK" : "FAIL"}`, !!llm.ping_ok);
+      add(`orch ${proc.orchestrator ? "OK" : "OFF"}`, !!proc.orchestrator);
+    }
+
+    function fillDebugSnapshot(snap) {
+      debugBody.textContent = snap.text || "（无文本输出）";
+      debugStatus.textContent = `更新时间：${snap.generated_at || "未知"}`;
+      renderDebugBadges(snap);
+      if (snap.debug_audio) {
+        debugPassthrough = !!snap.debug_audio.passthrough;
+        setDebugAudioUi();
+      }
+    }
+
+    function refreshDebug() {
+      if (!wsRef || wsRef.readyState !== WebSocket.OPEN) {
+        debugStatus.textContent = "未连接语音服务，无法获取调试信息。";
+        return;
+      }
+      debugStatus.textContent = "加载中…";
+      wsRef.send(JSON.stringify({ type: "debug_get" }));
+    }
+
     function fillSettings(snap) {
       settingsDraft = snap;
       audioProfileEl.innerHTML = "";
@@ -584,9 +846,33 @@
     }
 
     settingsBtn.addEventListener("click", openSettings);
+    debugBtn.addEventListener("click", openDebug);
     settingsCancel.addEventListener("click", closeSettings);
+    debugClose.addEventListener("click", closeDebug);
+    debugRefresh.addEventListener("click", refreshDebug);
+    debugCopy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(debugBody.textContent || "");
+        debugStatus.textContent = "已复制到剪贴板。";
+      } catch {
+        debugStatus.textContent = "复制失败，请手动选择文本。";
+      }
+    });
+    debugRecBtn.addEventListener("click", () => {
+      const seconds = Math.max(1, Math.min(30, Number(debugRecSec.value) || 5));
+      debugRecSec.value = String(seconds);
+      sendDebugAudio("record", { seconds });
+    });
+    debugPlayBtn.addEventListener("click", () => sendDebugAudio("play"));
+    debugPassBtn.addEventListener("click", () => {
+      sendDebugAudio(debugPassthrough ? "passthrough_stop" : "passthrough_start");
+    });
+    setDebugAudioUi();
     settingsModal.addEventListener("click", (ev) => {
       if (ev.target === settingsModal) closeSettings();
+    });
+    debugModal.addEventListener("click", (ev) => {
+      if (ev.target === debugModal) closeDebug();
     });
     settingsSave.addEventListener("click", () => {
       if (!wsRef || wsRef.readyState !== WebSocket.OPEN) {
@@ -656,6 +942,12 @@
           if (settingsModal.classList.contains("open") && wsRef) {
             wsRef.send(JSON.stringify({ type: "settings_get" }));
           }
+        }
+        if (msg.type === "debug_snapshot") {
+          fillDebugSnapshot(msg);
+        }
+        if (msg.type === "debug_audio_result") {
+          applyDebugAudioResult(msg);
         }
       };
     }

@@ -78,6 +78,10 @@ systemctl --no-pager status r1-llm-daemon.service --lines=3 || true
 systemctl --no-pager status r1-orchestrator.service --lines=3 || true
 systemctl --no-pager status r1-agent-gui.service --lines=3 || true
 
+if [[ -x "${AGENT_ROOT}/scripts/install_wifi_ap.sh" ]]; then
+  bash "${AGENT_ROOT}/scripts/install_wifi_ap.sh" || echo "[install] WARN: WiFi AP setup failed (see logs/wifi_ap.log)" >&2
+fi
+
 echo ""
 echo "[install] done"
 echo "  后台服务: systemctl status r1-llm-daemon r1-orchestrator"

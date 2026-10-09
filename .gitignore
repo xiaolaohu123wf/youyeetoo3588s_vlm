@@ -77,3 +77,8 @@ canvases/node_modules/
 
 # Windows adb push temp
 *.bak
+# Local ASR model package (including vendor tokens)
+/voice/sherpa-onnx-streaming-paraformer-bilingual-zh-en/
+
+# Explicitly internal whitepaper evidence; not for public distribution
+/docs/whitepaper/internal/

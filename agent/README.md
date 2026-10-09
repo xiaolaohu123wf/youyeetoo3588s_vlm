@@ -9,7 +9,8 @@ youyeetoo R1（RK3588S）+ RM1828（RK1828）端侧对话智能体。
 | 项 | 路径 / 端口 |
 |----|-------------|
 | 控制面板 | `agent/ui/index.html` · HTTP **8766** · Chromium 全屏 |
-| WebSocket 状态 | `ws://127.0.0.1:8765/ws` |
+| WebSocket 状态 | `ws://127.0.0.1:8765/ws`（局域网见 [`docs/WIFI_AP_WEBUI.md`](docs/WIFI_AP_WEBUI.md)） |
+| WiFi AP + PC WebUI | `YouYeetoo-R1` / `youyeetoo1` · `:8766` |
 | 桌面图标 | `~/Desktop/小揽语音助手.desktop` |
 | 登录自启 GUI | systemd `r1-agent-gui.service`（GNOME autostart 已禁用防双开） |
 | 语音服务自启 | `r1-llm-daemon` + `r1-orchestrator`（systemd） |

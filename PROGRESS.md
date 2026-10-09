@@ -168,3 +168,14 @@ bash /userdata/agent/scripts/open_agent_gui.sh
 - [ ] P5b：VLM spike → 统一 vlm_daemon / see()
 - [ ] P5：InternVL chat template · llm_daemon 重编
 - [ ] DTS 持久化 `hugepages=160`
+---
+
+## 项目文档与网页整理（2026-10-09）
+
+- 新增根目录 `README.md`：结构、架构、部署、资源边界与阶段进度。
+- 新增 `docs/site/` 交互式项目介绍：架构节点、模块入口、阶段筛选与展开。
+- GitHub Pages 工作流只发布 `docs/site/`，与板端 `agent/ui/` 实时控制面板独立。
+- 整理当前工作区实现：音频 / 系统调试面板、录音回放与直通、WiFi AP 局域网访问。
+- 本轮为源码与文档整理，不更新历史硬件验收日期或性能结果。
+- 当前正常回答在完整生成与清洗后才进入 TTS；token 流式显示不代表全链路流式首响。
+- `agent/vision/` 尚未实现；RTSP 原型的取帧目标 1fps 不代表 VLM 每秒输出一次描述。

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="小揽：基于 youyeetoo R1 与 RK1828 的端侧语音智能体，探索项目架构、模块与开发进度。">
+  <meta name="theme-color" content="#101f2b">
+  <title>小揽 · R1 端侧智能体 | 项目与进度</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23101f2b'/%3E%3Cpath d='M8 10v12m8-16v20m8-16v12' stroke='%235de3b1' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="data.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到项目内容</a>
+<header class="top"><a class="brand" href="#overview"><span class="mark">R1</span> 小揽 <span class="brand-sub">PROJECT NOTES</span></a><nav aria-label="主要导航"><a href="#architecture">架构</a><a href="#modules">结构</a><a href="#progress">进度</a><a id="repo-top" href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm">GitHub ↗</a></nav></header>
+<main id="main">
+<section class="hero" id="overview">
+  <div class="hero-copy"><p class="eyebrow"><span class="dot"></span> YOUYEETOO R1 × RM1828</p><h1>在端侧，<br>听见并回应。</h1><p class="intro">小揽，一个运行在本地硬件上的语音智能体。<br>从语音对话出发，逐步走向多模态感知。</p><div class="hero-actions"><a class="primary" href="#architecture">探索项目架构 <span>↓</span></a><a class="text-link" href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/blob/codex/project-overview/README.md">阅读 README ↗</a></div><p class="date-note">文档整理 <time datetime="2026-10-09">2026.10.09</time> · 验收依据：2026 年 8 月项目记录</p></div>
+  <aside class="brief" aria-label="项目概况"><div class="brief-head"><span>当前主线</span><span class="status">P5 · 持续开发</span></div><h2>语音对话智能体</h2><p>识别、思考、合成与播放，<br>由两颗芯片共同完成。</p><dl><div><dt>主控 / 编排</dt><dd>RK3588S <small>音频 · ASR · TTS · GUI</small></dd></div><div><dt>推理 / 加速</dt><dd>RK1828 <small>InternVL3.5-4B · LLM-only</small></dd></div><div><dt>运行方式</dt><dd>常驻服务 <small>Python asyncio + C++ RKNN3</small></dd></div></dl><div class="brief-foot"><span class="dot"></span> 主线已实现，板端状态以实际验收为准</div></aside>
+</section>
+<p class="branch-note">当前展示 <a href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/tree/codex/project-overview"><code>codex/project-overview</code> 语音基线 ↗</a>。远端 <a href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/tree/main"><code>main</code> ↗</a> 另有多模态与摄像头开发，尚未合并。</p>
+<div class="cap-strip"><span>流式语音识别</span><span>多轮对话</span><span>播放打断</span><span>多音色设置</span><span>HDMI / 局域网交互</span></div>
+<section id="architecture" class="section"><div class="section-head"><div><p class="eyebrow">01 / ARCHITECTURE</p><h2>一句话，如何得到回应？</h2></div><p>点击流程节点，查看职责与实现入口。</p></div><div class="pipeline" id="pipeline" role="group" aria-label="语音流程节点"></div><div class="detail" id="node-detail" aria-live="polite"></div><div class="architecture-note"><strong>视觉能力 · 独立原型</strong><p>RTSP → 取帧 → 448 × 448 预处理 → VLM 描述。统一 <code>see()</code> 调度仍在规划中；当前未接入语音主线。</p></div></section>
+<section id="modules" class="section"><div class="section-head"><div><p class="eyebrow">02 / SOURCE MAP</p><h2>从结构，找到代码。</h2></div><p>选择模块，查看它在项目中的位置。</p></div><div class="module-layout"><div id="module-list" class="module-list" role="group" aria-label="项目模块"></div><article id="module-detail" class="module-detail" aria-live="polite"></article></div></section>
+<section id="progress" class="section"><div class="section-head"><div><p class="eyebrow">03 / ROADMAP</p><h2>已走过的路，与下一步。</h2></div><p>阶段状态来自仓库记录，并非实时硬件监控。</p></div><div class="progress-head"><p id="progress-summary"></p><div class="filters" role="group" aria-label="筛选阶段"><button class="active" type="button" data-filter="all" aria-pressed="true">全部阶段</button><button type="button" data-filter="done" aria-pressed="false">已完成</button><button type="button" data-filter="open" aria-pressed="false">推进中</button></div></div><div id="stages" class="stages"></div><p id="empty" hidden>没有匹配的阶段。</p><div class="next"><h3>下一步重点</h3><ul><li><span>01</span>统一 VLM 常驻与 <code>see()</code> 调度</li><li><span>02</span>启用并验证 InternVL chat template</li><li><span>03</span>持久化 HugePage，完善异常恢复</li><li><span>04</span>减少语音首响延迟，补充板端回归</li></ul></div></section>
+<section class="getting"><div><p class="eyebrow">04 / GET STARTED</p><h2>从项目文档开始。</h2><p>运行前准备板端模型、RKNN runtime、sherpa-onnx 与 adb。<br>模型和 SDK 独立于源码，需要单独配置。</p></div><div class="getting-links"><a href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/blob/codex/project-overview/README.md">部署与运行说明 <span>↗</span></a><a href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/blob/codex/project-overview/agent/docs/BUILD_LINUX.md">Linux 编译说明 <span>↗</span></a><a href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/blob/codex/project-overview/PROGRESS.md">历史验收与进展 <span>↗</span></a></div></section>
+</main><footer><span>小揽 · youyeetoo R1 / RM1828</span><span>项目介绍页 · 实时控制面板运行于板端</span><a href="#overview">回到顶部 ↑</a></footer>
+<noscript><p class="no-js">交互式架构与阶段详情需要 JavaScript。完整内容也可在 <a href="https://github.com/xiaolaohu123wf/youyeetoo3588s_vlm/blob/codex/project-overview/README.md">README</a> 中阅读。</p></noscript>
+</body>
+</html>

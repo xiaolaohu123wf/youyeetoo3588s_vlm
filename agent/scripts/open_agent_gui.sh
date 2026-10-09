@@ -5,6 +5,7 @@ set -euo pipefail
 AGENT_ROOT="${AGENT_ROOT:-/userdata/agent}"
 UI_DIR="${AGENT_ROOT}/ui"
 PORT="${AGENT_GUI_PORT:-8766}"
+BIND="${AGENT_GUI_BIND:-0.0.0.0}"
 PIDFILE="${AGENT_ROOT}/run/gui_http.pid"
 LOG="${AGENT_ROOT}/logs/gui_http.log"
 GUI_LOG="${AGENT_ROOT}/logs/gui_autostart.log"
@@ -82,7 +83,7 @@ start_http() {
     fi
     rm -f "${PIDFILE}"
   fi
-  nohup python3 -m http.server "${PORT}" --bind 127.0.0.1 --directory "${UI_DIR}" >>"${LOG}" 2>&1 &
+  nohup python3 -m http.server "${PORT}" --bind "${BIND}" --directory "${UI_DIR}" >>"${LOG}" 2>&1 &
   echo $! >"${PIDFILE}"
   wait_ui_ready
 }

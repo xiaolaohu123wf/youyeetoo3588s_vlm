@@ -1,0 +1,15 @@
+[Unit]
+Description=R1 WiFi AP hotspot (WebUI access from PC)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=AGENT_ROOT=/userdata/agent
+EnvironmentFile=-/userdata/agent/config/wifi_ap.env
+ExecStart=/bin/bash /userdata/agent/scripts/wifi_ap_start.sh
+ExecStop=/bin/bash /userdata/agent/scripts/wifi_ap_stop.sh
+
+[Install]
+WantedBy=multi-user.target
