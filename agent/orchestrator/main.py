@@ -679,7 +679,7 @@ class Orchestrator:
             if etype == "shutdown":
                 LOG.warning("[event] shutdown signal — restarting event loop")
                 self.set_state(AgentState.LISTEN)
-                continue
+                return
             if etype == "error":
                 LOG.error("[event] %s", event)
                 continue
