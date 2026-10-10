@@ -18,12 +18,28 @@ max_new_tokens: 768
 # InternVL 4B can anchor to an unrelated previous turn; send only the current request
 # until multi-turn context is made reliable with the model's native chat template.
 history_max_turns: 0
+# Drop transcript after this many seconds without an LLM turn (0 = keep until reboot)
+history_idle_clear_sec: 600
 # llm_daemon: /tmp/r1-llm.sock · P5b vlm_daemon (InternVL3): /tmp/r1-vlm.sock
-socket_path: /tmp/r1-vlm.sock
+socket_path: /tmp/r1-llm.sock
 
 inference:
   # vlm_daemon (P5b) | llm_daemon (LLM-only legacy)
-  backend: vlm_daemon
+  backend: llm_daemon
+
+# Audio I/O: auto picks FY-SP701 USB when plugged, else board ES8388
+audio:
+  default_profile: auto
+  settings_path: /userdata/agent/run/user_settings.json
+  profiles:
+    fy_sp701:
+      usb_mic_volume: 20000
+      vad:
+        threshold: 0.58
+        min_silence_duration: 0.68
+        min_speech_duration: 0.22
+        speech_preroll_ms: 400
+        speech_tail_pad_ms: 350
 
 vad:
   model: /userdata/voice/silero_vad.onnx
@@ -83,9 +99,39 @@ tts:
   sherpa_bin: /userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/bin/sherpa-onnx-offline-tts
   sherpa_lib: /userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/lib
   num_threads: 4
+  default_voice: baker
   speed: 1.05
+  speed_min: 0.7
+  speed_max: 1.4
+  noise_scale: 0.667
   max_chars: 160
   merge_max_chars: 80
+  voices:
+    baker:
+      label: 清亮女声
+      backend: matcha
+      model_dir: /userdata/voice/matcha-icefall-zh-baker
+      sid: 0
+      default_speed: 1.0
+    melo:
+      label: 温柔女声
+      backend: vits
+      model_dir: /userdata/voice/vits-melo-tts-zh_en
+      sid: 0
+      noise_scale: 0.55
+      default_speed: 0.95
+      rule_fsts:
+        - /userdata/voice/vits-melo-tts-zh_en/date.fst
+        - /userdata/voice/vits-melo-tts-zh_en/number.fst
+    wnj_male:
+      label: 沉稳男声
+      backend: vits
+      model_dir: /userdata/voice/vits-zh-hf-fanchen-wnj
+      model_file: vits-zh-hf-fanchen-wnj.onnx
+      sid: 0
+      default_speed: 1.0
+      rule_fsts:
+        - /userdata/voice/vits-zh-hf-fanchen-wnj/number.fst
 
 api:
   enabled: true

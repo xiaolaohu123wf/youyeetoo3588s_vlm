@@ -45,5 +45,6 @@ def normalize_user_text(text: str) -> str:
     if m_name:
         text = m_name.group(1)
     text = _LEADING_JUNK.sub("", text)
+    text = re.sub(r"因色|音瑟|银色", "音色", text)
     text = re.sub(r"\s+", "", text)
     return text.strip()

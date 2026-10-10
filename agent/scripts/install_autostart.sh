@@ -135,13 +135,34 @@ bash "${AGENT_ROOT}/scripts/scale_desktop_icons.sh" "${USER_NAME}" 128 2.25 || t
 # Tech-style wallpaper
 bash "${AGENT_ROOT}/scripts/set_tech_wallpaper.sh" "${USER_NAME}" || true
 
+# GUI autostart via systemd only (avoid duplicate GNOME + systemd Chromium launches).
+if [[ -f "${AGENT_ROOT}/scripts/xiaolan-gui-autostart.desktop" ]]; then
+  install -m 644 "${AGENT_ROOT}/scripts/xiaolan-gui-autostart.desktop" \
+    "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop"
+  sed -i 's/^Hidden=false/Hidden=true/; s/^X-GNOME-Autostart-enabled=true/X-GNOME-Autostart-enabled=false/' \
+    "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop" 2>/dev/null || true
+  chown "${USER_NAME}:${USER_NAME}" "${AUTOSTART_DIR}/xiaolan-gui-autostart.desktop" 2>/dev/null || true
+fi
+
+if [[ -f "${AGENT_ROOT}/systemd/r1-agent-gui.service" ]]; then
+  install -m 644 "${AGENT_ROOT}/systemd/r1-agent-gui.service" /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable r1-agent-gui.service
+  systemctl restart r1-agent-gui.service || true
+fi
+
 systemctl --no-pager status r1-llm-daemon.service --lines=3 || true
 systemctl --no-pager status r1-orchestrator.service --lines=3 || true
 systemctl --no-pager status r1-webui.service --lines=3 2>/dev/null || true
+systemctl --no-pager status r1-agent-gui.service --lines=3 2>/dev/null || true
+
+if [[ -x "${AGENT_ROOT}/scripts/install_wifi_ap.sh" ]]; then
+  bash "${AGENT_ROOT}/scripts/install_wifi_ap.sh" || echo "[install] WARN: WiFi AP setup failed (see logs/wifi_ap.log)" >&2
+fi
 
 echo ""
 echo "[install] done"
-echo "  开机栈: r1-mediamtx + r1-mediamtx-frame (缓存) + vlm/llm + orchestrator + webui (:8766)"
+echo "  开机栈: r1-mediamtx + r1-mediamtx-frame (缓存) + vlm/llm + orchestrator + webui (:8766) + r1-agent-gui"
 echo "  PC 测试: adb forward tcp:8765 tcp:8765 && adb forward tcp:8766 tcp:8766"
 echo "  浏览器: http://127.0.0.1:8766  (API/WS :8765)"
 echo "  可选 HDMI 全屏: bash ${AGENT_ROOT}/scripts/open_agent_gui.sh"

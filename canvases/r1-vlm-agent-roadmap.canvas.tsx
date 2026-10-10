@@ -65,6 +65,13 @@ const PHASES = [
     work: "板载麦 + J368 stereo · 换麦/降噪留 P5+",
   },
   {
+    id: "p36",
+    name: "P3.6 FY-SP701",
+    days: "验收通过",
+    gate: "phase_3_6 --live · 11 PASS · Agent 集成待做",
+    work: "USB 阵列麦+功放 · plughw:1,0 · 与 P3.5 独立",
+  },
+  {
     id: "p4",
     name: "P4 RTSP 看图",
     days: "原型通过",
@@ -152,8 +159,24 @@ const TODOS: Record<
     { id: "p3v-7", content: "TTS 归一化 peak 26k · 截断 120 字 · LLM max_new=64", status: "completed" },
     { id: "p3v-8", content: "延迟优化：VAD/流式 ASR · 常驻进程 · 跳过 debug 回放", status: "pending" },
     { id: "p3v-9", content: "SDK 编译正式 llm_chat（替代 binary patch）", status: "pending" },
-    { id: "p3v-10", content: "换麦 / RNNoise 降噪（暂缓，待用户采购后）", status: "pending" },
+    { id: "p3v-10", content: "换麦 → FY-SP701 V3 已到 · P3.6 独立验收（板载仍冻结）", status: "completed" },
     { id: "p3v-11", content: "play_wav route guard：PulseAudio 播中关 Headphone Switch 修复", status: "completed" },
+  ],
+  p36: [
+    { id: "p36-1", content: "USB 枚举：cafe:b20a Timesintelli · ALSA card1 plughw:1,0", status: "completed" },
+    { id: "p36-2", content: "fy_sp701_*.sh + analyze_stereo_wav.py + phase_3_6_test.sh", status: "completed" },
+    { id: "p36-3", content: "双麦立体声 STEREO_OK · peak~21k · SenseVoice「你好」", status: "completed" },
+    { id: "p36-4", content: "16 kHz · 模块功放播放 · TTS 经 USB 喇叭", status: "completed" },
+    { id: "p36-5", content: "AEC 粗测：播放 tone 时 peak 未异常飙升", status: "completed" },
+    { id: "p36-6", content: "--live 验收 11 PASS · fy_sp701_asr_tts 闭环", status: "completed" },
+    { id: "p36-7", content: "docs/PHASE_3_6.md · git e55bcb2", status: "completed" },
+    { id: "p36-8", content: "Agent vad.alsa_device → plughw:1,0 · VAD 热切换", status: "completed" },
+    { id: "p36-9", content: "TtsEngine 播放路由 fy_sp701_play.sh（AudioProfileManager）", status: "completed" },
+    { id: "p36-10", content: "Streaming Paraformer 实时全双工实机（FY-SP701 I/O）", status: "in_progress" },
+    { id: "p36-11", content: "GUI 设置 Modal：输入/输出设备 · 音色 · 语速", status: "pending" },
+    { id: "p36-12", content: "WS settings_get/set + user_settings.json 持久化", status: "pending" },
+    { id: "p36-13", content: "ANC 专项噪声对比（P3.6b 可选）", status: "pending" },
+    { id: "p36-14", content: "修复 wav_to_16k_mono append_fade_out tuple bug", status: "completed" },
   ],
   p4: [
     { id: "p4-1", content: "静态 IP 192.168.2.100 + ping 192.168.2.169", status: "completed" },
@@ -171,6 +194,8 @@ const TODOS: Record<
     { id: "p5-s1", content: "并行 spike：VLM 六件套 text-only 可跳过 vision？", status: "pending" },
     { id: "p5-b1", content: "P5b see()：spike 过→统一 vlm_daemon；不过→按需 VLM", status: "pending" },
     { id: "p5-c1", content: "HDMI 全屏 GUI + 登录自启 + 壁纸 + 桌面图标", status: "completed" },
+    { id: "p5-c2", content: "GUI 设置按钮：输入/输出设备 · 音色 · 语速（与退出并排）", status: "pending" },
+    { id: "p5-c3", content: "AudioProfileManager：board vs fy_sp701 · IDLE 时热切换", status: "pending" },
   ],
   p6: [
     { id: "p6-1", content: "rknn3.service ExecStartPre=sleep 5（proxy 时序）", status: "pending" },
@@ -253,6 +278,10 @@ const PROGRESS_LOG = [
   { date: "2026-08-26 20:00", item: "P5 修复", detail: "persona 兜底 · pipelined TTS · LLM socket 权限 · barge-in" },
   { date: "2026-08-27 11:30", item: "HDMI GUI", detail: "Chromium 全屏 · WS 控制面板 · 桌面图标 · 退出按钮" },
   { date: "2026-08-27 11:45", item: "桌面产品化", detail: "科技风 wallpaper.svg · systemd 自启 · 登录自动开 GUI · 2.25× 缩放" },
+  { date: "2026-08-28 17:22", item: "P3.6 硬件", detail: "FY-SP701 V3 USB · cafe:b20a · card1 plughw:1,0 · 2MIC+5W功放" },
+  { date: "2026-08-28 17:30", item: "P3.6 脚本", detail: "fy_sp701_*.sh · phase_3_6_test.sh · PHASE_3_6.md · commit e55bcb2" },
+  { date: "2026-08-28 17:37", item: "P3.6 --live ✅", detail: "11 PASS · 双麦 peak~21k · ASR「你好」· asr_tts 闭环 · AEC 粗测 OK" },
+  { date: "2026-08-28 17:40", item: "P3.6→P5", detail: "Agent FY-SP701 集成 + GUI 设置 Modal 待办写入 Canvas" },
   { date: "2026-08-21 23:16", item: "里程碑", detail: "P0–P4 原型全通 · P5 流式语音+GUI 进行中" },
 ] as const;
 
@@ -270,6 +299,8 @@ const STATUS_LAYERS = [
   ["3588 语音 ASR", "✅ 冻结", "main_board · prep boost · peak~697 可识别"],
   ["3588 语音 TTS", "✅ 冻结", "normalize peak 26k · stereo · route guard"],
   ["语音对话闭环", "✅ 冻结", "asr_tts / voice_chat · voice_hw_board v2"],
+  ["FY-SP701 USB I/O", "✅ P3.6", "plughw:1,0 · 双麦 · 模块功放 · --live 11 PASS"],
+  ["FY-SP701 → Agent", "✅ 集成", "auto profile · vad+TTS plughw:1,0 · 2026-08-28"],
   ["P4 RTSP 取流", "✅", "192.168.2.169 tcp h264 · 640×480 · ~2.5s"],
   ["P4 RTSP 短描述", "✅", "InternVL · Vision 190ms · p4_test"],
   ["P4 TTS 播报", "✅", "p4_tts · voice_hw v2 · 描述朗读"],
@@ -334,12 +365,14 @@ const P5_IMPL_PHASES = [
   ["C", "streaming Paraformer ASR", "partial/final · bilingual", "✅"],
   ["D", "Matcha TTS 流水线", "E2E 首响 <4s · barge-in", "✅"],
   ["E", "agent.yaml + agent_api WS + HDMI GUI", "全屏 Chromium · 自启", "✅"],
+  ["P5c", "GUI 设置 + 音频 Profile 切换", "输入/输出 · 音色 · 语速", "pending"],
   ["S", "VLM spike S1–S3", "与 A 并行", "pending"],
   ["P5b", "see() 或 vlm_daemon", "spike 定案", "deferred"],
 ] as const;
 
 const P5_DESKTOP_GUI = [
   ["控制面板", "agent/ui/index.html", "标题「语音助手」· 三对话框 · 退出"],
+  ["设置（待）", "与退出并排 · Modal", "输入/输出设备 · 音色 · 语速 · P5c"],
   ["HTTP", "127.0.0.1:8766", "python3 http.server · open_agent_gui.sh"],
   ["WebSocket", "127.0.0.1:8765/ws", "state · asr · llm_token · tts_sentence"],
   ["浏览器", "/usr/bin/chromium", "--start-fullscreen · 勿用 firefox snap"],
@@ -361,6 +394,8 @@ const P5_DECISIONS_LOCKED = [
 ] as const;
 
 const NEXT_MILESTONES = [
+  ["P3.6 集成", "FY-SP701 → Agent 全链路", "vad+TTS · Streaming Paraformer 实机"],
+  ["P5c 设置", "GUI Modal + WS settings API", "board / fy_sp701 Profile 切换"],
   ["Spike S", "VLM 统一常驻可行性", "并行 · 不过则 P5b 按需 VLM"],
   ["P5b", "see() 或 vlm_daemon", "spike 全过则替换 llm_daemon"],
   ["P5 G-b", "InternVL chat template", "llm_daemon 重编 · 提示词服从"],
@@ -377,6 +412,41 @@ const VOICE_HW_FROZEN = [
   ["入口", "voice_hw_board.sh v2", "asr_tts.sh · voice_chat.sh 自动 source"],
 ] as const;
 
+/** FY-SP701 V3 USB 阵列麦 + 功放（P3.6 · 与 P3.5 独立） */
+const P36_HW = [
+  ["USB ID", "cafe:b20a Timesintelli", "Bus 001 Device 003"],
+  ["ALSA", "card 1 · plughw:1,0", "采集+播放同卡 · 16 kHz"],
+  ["双麦", "2MIC 线性 · stereo", "L/R peak 一致 · analyze_stereo_wav.py"],
+  ["功放", "8Ω 5W · 模块喇叭", "fy_sp701_play.sh · 勿叠加大增益"],
+  ["固件算法", "AEC/ANC/AGC/DNN", "黑盒 · USB 仅出 PCM · 无 ASR 文本 API"],
+  ["R1 ASR", "Streaming Paraformer", "模组修音 + R1 流式识别 · 非模组 ASR"],
+  ["脚本", "fy_sp701_hw.sh", "独立于 voice_hw_board.sh"],
+  ["验收", "phase_3_6_test.sh --live", "2026-08-28 · 11 PASS · 0 FAIL"],
+] as const;
+
+const P36_E2E_RESULTS = [
+  ["USB 枚举", "lsusb + aplay/arecord -l", "card1 可见", "✅"],
+  ["功放播放", "880/660 Hz tone", "模块喇叭可听", "✅"],
+  ["双麦采集", "3s stereo", "peak~21368 · STEREO_OK", "✅"],
+  ["16 kHz", "mono 分析", "48000 samples @16k", "✅"],
+  ["AEC 粗测", "安静 vs 播 tone", "18951→19985 未飙升", "✅ 粗测"],
+  ["ASR smoke", "SenseVoice offline", "「你好」", "✅"],
+  ["TTS 播放", "模块功放", "华芸模组播放测试…", "✅"],
+  ["asr_tts 闭环", "fy_sp701_asr_tts.sh", "识别+复读完成", "✅ --live"],
+  ["Agent 集成", "vad+TTS 路由", "仍 plughw:0,0", "⏳ 下一步"],
+  ["GUI 设置", "设备/音色/语速", "Modal 未实现", "⏳ P5c"],
+] as const;
+
+const P36_ALGO_AUDIT = [
+  ["AEC 回声抑制", "模组 DSP", "粗测 peak 比通过", "⚠️ 非全双工对话"],
+  ["ANC 噪声抑制", "模组 DSP", "无粉噪对比实验", "❌ 未验收"],
+  ["AGC 自动增益", "模组 DSP", "peak~21k 间接迹象", "⚠️ 未隔离"],
+  ["DNN", "模组 DSP", "无独立探针", "— 黑盒"],
+  ["AES", "模组 DSP", "未单独测", "❌ 未验收"],
+  ["ASR（模组）", "模组固件", "无 USB 文本输出", "N/A"],
+  ["ASR（R1）", "Paraformer 流式", "P3.6 离线 OK · 实时待集成", "⏳"],
+] as const;
+
 const VOICE_E2E_RESULTS = [
   ["mic_probe", "headset/TRS 无麦", "四路 peak=1 · main_board 最佳", "✅ 锁定 main_board"],
   ["mic_diag", "板载麦 + 滴声", "peak 246–18238 · ASR OK", "✅"],
@@ -384,7 +454,7 @@ const VOICE_E2E_RESULTS = [
   ["TTS v2", "同轮 asr_tts", "normalize gain~5 · peak=26000 stereo", "✅ 验收"],
   ["喇叭路由", "2026-08-26 route guard", "Headphone Switch 播中 off → guard 修复", "✅ 用户确认"],
   ["voice_chat LLM", "Intern-S1", "LLM ~80 tok/s", "✅"],
-  ["后续", "换麦 / RNNoise", "底噪偏大但可用 · 暂不改动", "⏸ 暂缓"],
+  ["后续", "FY-SP701 V3", "P3.6 --live 11 PASS · Agent/GUI 集成中", "✅ 模组 / ⏳ 集成"],
 ] as const;
 
 const VOICE_ACCEPTANCE = [
@@ -426,6 +496,7 @@ const E2E_THREE_FLOWS = [
   ["① ASR 识别", "mic_diag → asr 单测", "bash …/mic_diag.sh 5", "peak 500–3000 · [ASR] 中文非空", "J368 喇叭 · 勿插 3.5mm"],
   ["② TTS 播报", "喇叭 + 合成", "bash …/speaker_test.sh", "滴声 + TTS · Headphone=on", "play_wav route guard"],
   ["③ ASR→TTS", "听写复读（无 LLM）", "bash …/asr_tts.sh", "说中文 → 同句朗读", "⭐ P3.5 标准验收"],
+  ["③b FY-SP701", "USB 阵列麦闭环", "bash …/phase_3_6_test.sh --live", "11 PASS · asr_tts 闭环", "⭐ P3.6 · plughw:1,0"],
   ["④ 说话对话", "ASR→LLM→TTS", "bash …/voice_chat.sh", "问句 → Intern-S1 答 → 朗读", "1828 LLM-only ~300MB"],
   ["⑤ 看图说话", "RTSP→VLM→TTS", "bash …/p4_test.sh", "画面描述 → J368 播报", "1828 VLM ~3GB · 摄像机在线"],
   ["1828 互斥", "voice_chat ↔ p4_test", "adb reboot && sleep 45", "p4_check_1828 通过后再跑 P4", "同 boot 不可混跑"],
@@ -570,6 +641,18 @@ const TEST_COMMANDS = {
     { label: "分析上次录音电平", cmd: "python3 /userdata/voice/scripts/analyze_wav.py /tmp/last_asr.wav" },
     { label: "仅 LLM+TTS（跳过录音）", cmd: "bash /userdata/voice/scripts/test_llm_tts.sh \"你好\"" },
     { label: "ES8388 咪头 mixer 状态", cmd: "bash /userdata/voice/scripts/mic_setup.sh" },
+  ],
+  p36: [
+    { label: "⭐【P3.6 验收】--live 全项", cmd: "bash /userdata/agent/scripts/phase_3_6_test.sh --live" },
+    { label: "USB 阵列麦 ASR→TTS 闭环", cmd: "bash /userdata/voice/scripts/fy_sp701_asr_tts.sh" },
+    { label: "FY-SP701 诊断", cmd: "bash /userdata/voice/scripts/fy_sp701_mic_diag.sh 5" },
+    { label: "检测 USB 声卡", cmd: "source /userdata/voice/scripts/fy_sp701_detect.sh" },
+    { label: "USB 设备枚举", cmd: "lsusb | grep -iE 'cafe|Timesintelli|Audio'; aplay -l; arecord -l" },
+    { label: "双麦立体声分析", cmd: "python3 /userdata/voice/scripts/analyze_stereo_wav.py /tmp/fy_sp701_mic_diag.wav" },
+  ],
+  p36Win: [
+    { label: "推送 agent P3.6", cmd: "powershell -File C:\\Users\\wwff\\Documents\\youyeetoo3588s\\agent\\scripts\\push_agent.ps1" },
+    { label: "推送 fy_sp701 脚本", cmd: "bash C:/Users/wwff/Documents/youyeetoo3588s/voice/scripts/push_voice.sh" },
   ],
   voiceWin: [
     { label: "PC 脚本目录", cmd: "C:\\Users\\wwff\\Documents\\youyeetoo3588s\\voice\\scripts\\" },
@@ -850,7 +933,7 @@ function VisionPipelineGraph() {
 }
 
 export default function R1VlmAgentRoadmap() {
-  const [phaseId, setPhaseId] = useCanvasState<string>("phase", "p5");
+  const [phaseId, setPhaseId] = useCanvasState<string>("phase", "p36");
   const phase = PHASES.find((p) => p.id === phaseId) ?? PHASES[0];
 
   return (
@@ -912,16 +995,23 @@ export default function R1VlmAgentRoadmap() {
       </CollapsibleSection>
 
       <Grid columns={5} gap={16}>
-        <Stat value="P0–P3 ✓" label="InternVL 看图+纯文本" tone="success" />
-        <Stat value="P3.5 ✓" label="voice_chat E2E" tone="success" />
+        <Stat value="P3.5 ✓" label="板载 voice_hw v2" tone="success" />
+        <Stat value="P3.6 ✓" label="FY-SP701 --live" tone="success" />
         <Stat value="P4 ✓" label="RTSP→448² 短描述" tone="success" />
-        <Stat value="P5 →" label="Agent · 延迟优化" tone="warning" />
+        <Stat value="P5 →" label="Agent 集成+设置 GUI" tone="warning" />
         <Stat value="1828" label="勿 voice+VLM 同占" tone="info" />
       </Grid>
 
       <Callout tone="success" title="当前里程碑（2026-08-21 23:16）">
         三大链路原型均已在板端验收：<strong>纯文本 LLM</strong> · <strong>语音对话</strong> · <strong>RTSP 短看图</strong>。
         延迟与 1828 <strong>LLM-only 常驻</strong>（Ollama 式）在 P5 v1 实现；看图 see() 经 spike 后 P5b 统一 vlm_daemon。
+      </Callout>
+
+      <Callout tone="success" title="P3.6 FY-SP701 验收（2026-08-28 · --live 11 PASS）">
+        <strong>硬件</strong>：华芸 FY-SP701 V3 · USB cafe:b20a · <Code>plughw:1,0</Code> · 2MIC+5W功放。
+        <strong>验收</strong>：<Code>bash /userdata/agent/scripts/phase_3_6_test.sh --live</Code>。
+        <strong>下一步</strong>：Agent 采集/播放切 USB · GUI 设置 Modal · Streaming Paraformer 实机。
+        模组 AEC/ANC/AGC 为固件黑盒；R1 ASR 走 Paraformer 流式，非模组文本 API。
       </Callout>
 
       <Callout tone="success" title="P3.5 验收冻结（2026-08-22 15:00 · voice_hw_board v2）">
@@ -935,6 +1025,27 @@ export default function R1VlmAgentRoadmap() {
       <Table
         headers={["项", "值", "说明"]}
         rows={VOICE_HW_FROZEN.map((r) => [...r])}
+        striped
+      />
+
+      <H2>P3.6 FY-SP701 参数与验收</H2>
+      <Table
+        headers={["项", "值", "说明"]}
+        rows={P36_HW.map((r) => [...r])}
+        striped
+      />
+      <Table
+        headers={["验收项", "命令/条件", "实测", "状态"]}
+        rows={P36_E2E_RESULTS.map((r) => [...r])}
+        rowTone={[
+          "success", "success", "success", "success", "success",
+          "success", "success", "success", "warning", "warning",
+        ]}
+        striped
+      />
+      <Table
+        headers={["算法", "位置", "P3.6 测试", "结论"]}
+        rows={P36_ALGO_AUDIT.map((r) => [...r])}
         striped
       />
 
@@ -954,7 +1065,7 @@ export default function R1VlmAgentRoadmap() {
       <Table
         headers={["链路", "说明", "板端命令", "通过判据", "备注"]}
         rows={E2E_THREE_FLOWS.map((r) => [...r])}
-        rowTone={["success", "success", "success", "info", "success", "warning"]}
+        rowTone={["success", "success", "success", "success", "info", "success", "warning"]}
         striped
       />
       <Grid columns={3} gap={16}>
@@ -1821,11 +1932,29 @@ amixer -c 0 cget numid=35 | grep values   # Mono Mux stereo  → 0
               ["TTS", "RK3588 CPU", "VITS-Melo · normalize peak 26000 · ch=2"],
               ["LLM 对话", "RM1828", "InternVL llm-only · llm_ask.py · max_new=64"],
               ["冻结入口", "voice_hw_board.sh v2", "asr_tts.sh · voice_chat.sh"],
-              ["暂缓", "换麦 / RNNoise", "底噪偏大但可用 · 后续再优化"],
+              ["暂缓", "换麦 / RNNoise", "FY-SP701 已到 · P3.6 独立验收"],
             ]}
             striped
           />
           <CommandBlock title="板端测试命令" items={TEST_COMMANDS.voice} />
+        </Stack>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="⑯c FY-SP701 USB 模组（P3.6 · adb shell）" trailing={<Text size="small">plughw:1,0 · --live 11 PASS</Text>}>
+        <Stack gap={12}>
+          <Table
+            headers={["分工", "位置", "说明"]}
+            rows={[
+              ["麦克风+功放", "FY-SP701 V3 USB", "cafe:b20a · card1 · 2MIC+5W"],
+              ["前端 DSP", "模组固件", "AEC/ANC/AGC/DNN · 仅 PCM 输出"],
+              ["ASR", "R1 CPU", "Streaming Paraformer · 非模组文本 API"],
+              ["验收", "phase_3_6_test.sh", "2026-08-28 · 11 PASS"],
+              ["下一步", "Agent 集成", "vad+TTS 路由 · GUI 设置 Modal"],
+            ]}
+            striped
+          />
+          <CommandBlock title="板端测试命令" items={TEST_COMMANDS.p36} />
+          <CommandBlock title="Windows 推送" items={TEST_COMMANDS.p36Win} />
         </Stack>
       </CollapsibleSection>
 
@@ -1906,8 +2035,8 @@ amixer -c 0 cget numid=35 | grep values   # Mono Mux stereo  → 0
       />
 
       <Text tone="tertiary" size="small">
-        最后更新 2026-08-26 13:35 UTC+8 · ㉑ P5 TECH v1.0 · InternVL LLM-only daemon ·
-        ⑳ 喇叭 route guard · P0–P4 原型全通 · agent/ 代码库 · VM gp@192.168.100.196
+        最后更新 2026-08-28 17:40 UTC+8 · P3.6 FY-SP701 --live 11 PASS · P5c GUI 设置待办 ·
+        P0–P4 原型全通 · agent/ 代码库 · VM gp@192.168.100.196
       </Text>
     </Stack>
   );

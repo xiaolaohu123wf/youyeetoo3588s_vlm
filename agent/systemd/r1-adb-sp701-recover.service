@@ -1,0 +1,15 @@
+[Unit]
+Description=Restore adb after FY-SP701 USB audio hotplug
+After=local-fs.target
+ConditionPathExists=/usr/bin/usbdevice
+
+[Service]
+Type=oneshot
+Environment=AGENT_ROOT=/userdata/agent
+Environment=SP701_RECOVER_WAIT_SEC=12
+Environment=ADB_BOOT_GRACE_SEC=90
+Environment=ADB_RECOVER_TRIES=5
+ExecStart=/bin/bash /userdata/agent/scripts/recover_adb_after_sp701.sh
+
+[Install]
+WantedBy=multi-user.target

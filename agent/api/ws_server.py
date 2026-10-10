@@ -1,6 +1,7 @@
 """Minimal WebSocket broadcast server (stdlib asyncio only)."""
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import asyncio
 import base64
 import contextlib
@@ -65,7 +66,7 @@ async def _handle_client(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     bus: EventBus,
-    on_message: Any = None,
+    on_message: Callable[[str], Any] | None = None,
 ) -> None:
     peer = writer.get_extra_info("peername")
     q: asyncio.Queue[str] | None = None
@@ -117,7 +118,7 @@ async def _handle_client(
                         if asyncio.iscoroutine(res):
                             await res
                     except Exception as exc:
-                        LOG.warning("[api] on_message failed: %s", exc)
+                        LOG.warning("[api] ws inbound handler failed: %s", exc)
 
         out_task = asyncio.create_task(pump_out())
         in_task = asyncio.create_task(pump_in())
@@ -144,7 +145,7 @@ async def run_ws_server(
     bus: EventBus,
     host: str = "127.0.0.1",
     port: int = 8765,
-    on_message: Any = None,
+    on_message: Callable[[str], Any] | None = None,
 ) -> asyncio.Server:
     server = await asyncio.start_server(
         lambda r, w: _handle_client(r, w, bus, on_message),

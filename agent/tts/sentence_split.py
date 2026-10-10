@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import re
 
+from tts.pronunciation_fix import fix_tts_pronunciation
+
 _PRIMARY = re.compile(r"([^。！？!?\n]+[。！？!?\n])")
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 
@@ -156,9 +158,13 @@ def drain_complete_sentences(buffer: str, *, min_flush_chars: int = 22) -> tuple
 
 
 _BAD_REPLY = re.compile(
-    r"人工智能|以下是|我可以帮助|助手|没有名字|小AI|有什么需要|帮忙的吗"
-    r"|爱因斯坦|广义相对论|自然界|深度学习|Transformer|以下方法|如果您能提供|乐意帮助"
+    r"以下是|我可以帮助|有什么需要|帮忙的吗|没有名字|小AI"
+    r"|爱因斯坦|广义相对论|以下方法|如果您能提供|乐意帮助"
     r"|乐意为你讲述|感兴趣的主题|请告诉我你.*需求|创作一个简短"
+    r"|作为一个人工智能|作为一个AI|我是语言模型"
+)
+_TOPIC_ASK = re.compile(
+    r"人工智能|机器学习|深度学习|神经网络|什么是|解释一下|解释|区别|原理|算法|怎么理解"
 )
 _CAPABILITY = re.compile(r"做什么|会什么|能干|帮我什么|都会做")
 _STORY = re.compile(r"故事|哄我|睡前|讲个笑话|讲个故事|讲讲话|讲个话|笑话")
@@ -168,6 +174,8 @@ _STOP = STOP_PATTERN
 _INTRO_PREFIX = re.compile(r"^(?:我叫小揽|我是小揽)[，,。\s]*")
 _NAME_ONLY = re.compile(r"^(?:我叫小揽|我是小揽)[。！？]?$")
 _SCIENCE_LECTURE = re.compile(r"引力是|基本力|时空弯曲|训练数据|超参数")
+_TRANSCRIPT_ECHO = re.compile(r"(?:\r?\n\s*){1,2}用户[：:]")
+_INLINE_TRANSCRIPT = re.compile(r"用户[：:][^。！？!?]*小揽[：:]")
 _STORY_FALLBACKS = (
     "好呀，小狐狸在夜里找星星，走累了靠着月亮睡了。风轻轻吹，它梦见彩虹。晚安，好梦。",
     "从前有只小兔子，每天傍晚都在窗台等晚霞。有一天晚霞落在它耳朵上，变成了一朵温暖的花。",
@@ -201,9 +209,23 @@ _THINKING_PREFIX = re.compile(
 )
 
 
+def strip_transcript_echo(text: str) -> str:
+    """Drop history replay when the model copies prompt transcript into its reply."""
+    text = (text or "").strip()
+    if not text:
+        return text
+    m = _TRANSCRIPT_ECHO.search(text)
+    if m:
+        text = text[: m.start()].strip()
+    m2 = _INLINE_TRANSCRIPT.search(text)
+    if m2:
+        text = text[: m2.start()].strip()
+    return text.strip()
+
+
 def clean_llm_reply(user_text: str, reply: str) -> str:
-    """Strip spurious self-intro, thinking tags, and preamble filler."""
-    text = (reply or "").strip()
+    """Strip transcript echo, spurious self-intro, thinking tags, and preamble filler."""
+    text = strip_transcript_echo((reply or "").strip())
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
     text = re.sub(r"</?think>", "", text)
     text = re.sub(r"<\|.*?\|>", "", text)
@@ -225,12 +247,14 @@ def is_spurious_name_reply(user_text: str, reply: str) -> bool:
     return len(_CJK.findall(clean)) <= 8 and bool(re.search(r"叫小揽|是小揽", clean))
 
 
-def is_robotic_reply(text: str) -> bool:
-    return False
+def is_robotic_reply(text: str, user_text: str = "") -> bool:
+    if _TOPIC_ASK.search(user_text or ""):
+        return False
+    return bool(_BAD_REPLY.search(text))
 
 
 def is_off_topic_reply(user_text: str, reply: str) -> bool:
-    return False
+    return bool(_SCIENCE_LECTURE.search(reply) or is_robotic_reply(reply, user_text))
 
 
 def is_self_echo(spoken_text: str, detected_text: str) -> bool:
@@ -337,7 +361,6 @@ def extract_speak_sentences(text: str, max_cjk: int = 99999, *, max_chunk_len: i
         s_clean = sanitize_tts_text(raw_s)
         if not is_speakable(s_clean):
             continue
-
         # If sentence is long and has commas, break at clause boundaries
         chunks_to_add: list[str] = []
         if len(s_clean) > max_chunk_len and "，" in s_clean:
@@ -370,6 +393,31 @@ def extract_speak_sentences(text: str, max_cjk: int = 99999, *, max_chunk_len: i
             used += n
 
     return out
+
+
+def split_tts_clauses(sentence: str) -> list[str]:
+    """Split one sentence into comma clauses for smoother TTS prosody."""
+    sentence = sanitize_tts_text(sentence)
+    if not sentence:
+        return []
+    if "，" not in sentence or count_cjk(sentence) < 16:
+        fixed = fix_tts_pronunciation(sentence)
+        return [fixed] if is_speakable(fixed) else []
+
+    out: list[str] = []
+    for chunk in re.split(r"(?<=[，])", sentence):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        fixed = fix_tts_pronunciation(chunk)
+        if is_speakable(fixed):
+            out.append(fixed)
+        elif out:
+            out[-1] += fixed
+    if out:
+        return out
+    fixed = fix_tts_pronunciation(sentence)
+    return [fixed] if is_speakable(fixed) else []
 
 
 def flush_remainder(buffer: str) -> list[str]:

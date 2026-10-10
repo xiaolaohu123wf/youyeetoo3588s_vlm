@@ -8,6 +8,27 @@ LOG="${AGENT_ROOT}/logs/orchestrator.log"
 API_PORT="${AGENT_API_PORT:-8765}"
 
 source /userdata/voice/scripts/voice_hw_board.sh 2>/dev/null || true
+AUDIO_PROFILE="${AGENT_AUDIO_PROFILE:-auto}"
+_hw="${VOICE_ROOT:-/userdata/voice}/scripts"
+case "${AUDIO_PROFILE}" in
+  fy_sp701)
+    source "${_hw}/fy_sp701_hw.sh" 2>/dev/null || true
+    echo "[start] audio profile: fy_sp701 (forced)"
+    ;;
+  board)
+    source "${_hw}/voice_hw_board.sh" 2>/dev/null || true
+    echo "[start] audio profile: board (forced)"
+    ;;
+  auto|*)
+    if lsusb 2>/dev/null | grep -qiE 'cafe:b20a|Timesintelli'; then
+      source "${_hw}/fy_sp701_hw.sh" 2>/dev/null || true
+      echo "[start] audio profile: auto → fy_sp701 USB detected"
+    else
+      source "${_hw}/voice_hw_board.sh" 2>/dev/null || true
+      echo "[start] audio profile: auto → board ES8388"
+    fi
+    ;;
+esac
 # Agent live mic: gain 8 clips loud syllables (e.g. 笑); 6 is safer for close-talk.
 export MIC_CAPTURE_GAIN="${AGENT_MIC_CAPTURE_GAIN:-6}"
 export PYTHONPATH="${AGENT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
@@ -44,17 +65,30 @@ if [[ ! -S /tmp/r1-llm.sock ]]; then
   bash "${AGENT_ROOT}/scripts/start_llm_daemon.sh" || true
 fi
 
-nohup python3 -m orchestrator.main \
-  --config "${AGENT_ROOT}/config/agent.yaml" \
-  --agent-root "${AGENT_ROOT}" \
-  >>"${LOG}" 2>&1 &
+_run_orchestrator() {
+  nohup python3 -m orchestrator.main \
+    --config "${AGENT_ROOT}/config/agent.yaml" \
+    --agent-root "${AGENT_ROOT}" \
+    >>"${LOG}" 2>&1 &
+  echo $!
+}
 
-new_pid=$!
+if [[ "$(id -u)" -eq 0 ]]; then
+  echo "[start] dropping to user youyeetoo (avoid TTS file permission issues)"
+  new_pid="$(sudo -u youyeetoo bash -c "
+    export AGENT_ROOT='${AGENT_ROOT}' PYTHONPATH='${PYTHONPATH}' LD_LIBRARY_PATH='${LD_LIBRARY_PATH}' MIC_CAPTURE_GAIN='${MIC_CAPTURE_GAIN}'
+    cd '${AGENT_ROOT}'
+    nohup python3 -m orchestrator.main --config '${AGENT_ROOT}/config/agent.yaml' --agent-root '${AGENT_ROOT}' >>'${LOG}' 2>&1 &
+    echo \$!
+  ")"
+else
+  new_pid="$(_run_orchestrator)"
+fi
 echo "${new_pid}" >"${PIDFILE}"
 sleep 2
 if kill -0 "${new_pid}" 2>/dev/null; then
   echo "[start] orchestrator pid=${new_pid} log=${LOG}"
-  echo "[start] speak to onboard mic; watch: tail -f ${LOG}"
+  echo "[start] speak to mic (${AUDIO_PROFILE:-auto}); watch: tail -f ${LOG}"
 else
   echo "[start] FAILED — process exited; tail ${LOG}" >&2
   rm -f "${PIDFILE}"

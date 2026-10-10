@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from tts.pronunciation_fix import fix_tts_pronunciation
 from tts.sentence_split import is_speakable, sanitize_tts_text
 from tts.tts_engine import TtsEngine
 
@@ -141,6 +142,7 @@ class TtsQueue:
         if self._interrupted.is_set() or generation != self._active_generation:
             return
         text = sanitize_tts_text(text)
+        text = fix_tts_pronunciation(text)
         if not is_speakable(text):
             return
         self._utterance_chunks += 1
@@ -177,6 +179,18 @@ class TtsQueue:
         self._play_task = None
         self._current_speaking_chunk = None
         self._current_speaking_generation = None
+
+    async def reconfigure(self, cfg) -> None:
+        from tts.tts_engine import TtsConfig
+
+        assert isinstance(cfg, TtsConfig)
+        await asyncio.to_thread(self.engine.reconfigure, cfg)
+        LOG.info(
+            "[tts] reconfigured backend=%s sid=%d speed=%.2f",
+            cfg.backend,
+            cfg.sid,
+            cfg.speed,
+        )
 
     async def _synth_worker(self) -> None:
         while True:

@@ -1,0 +1,16 @@
+[Unit]
+Description=Retry Rockchip usb adb after host USB audio enumerates (FY-SP701)
+After=usbdevice.service local-fs.target
+Wants=usbdevice.service
+ConditionPathExists=/usr/bin/usbdevice
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=AGENT_ROOT=/userdata/agent
+Environment=USB_RETRY_WAIT_SEC=15
+Environment=USB_RETRY_MAX=5
+ExecStart=/bin/bash /userdata/agent/scripts/retry_usbdevice.sh
+
+[Install]
+WantedBy=multi-user.target

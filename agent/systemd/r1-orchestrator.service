@@ -13,10 +13,12 @@ Environment=PYTHONPATH=/userdata/agent
 Environment=LD_LIBRARY_PATH=/userdata/voice/sherpa-onnx-v1.12.8-linux-aarch64-shared-cpu/lib
 Environment=AGENT_MIC_CAPTURE_GAIN=6
 WorkingDirectory=/userdata/agent
+ExecStartPre=/bin/bash /userdata/agent/scripts/fix_llm_sock_perms.sh /tmp/r1-llm.sock 90
 ExecStartPre=/bin/bash /userdata/agent/scripts/orchestrator_wait_infer_sock.sh
+ExecStartPre=/bin/bash /userdata/agent/scripts/wait_fy_sp701.sh
 ExecStartPre=-/bin/bash /userdata/voice/scripts/voice_hw_board.sh
 ExecStartPre=-/bin/bash -c 'chown -R youyeetoo:youyeetoo /userdata/agent/ui 2>/dev/null; find /userdata/agent/run -maxdepth 1 -user root -exec chown youyeetoo:youyeetoo {} + 2>/dev/null; true'
-ExecStart=/usr/bin/python3 -m xiaolan_cli serve --config /userdata/agent/config/agent.yaml --agent-root /userdata/agent
+ExecStart=/usr/bin/python3 -m orchestrator.main --config /userdata/agent/config/agent.yaml --agent-root /userdata/agent
 StandardOutput=append:/userdata/agent/logs/orchestrator.log
 StandardError=append:/userdata/agent/logs/orchestrator.log
 Restart=on-failure

@@ -19,7 +19,7 @@ def read_wav(path):
         samples = [(samples[i] + samples[i + 1]) // 2 for i in range(0, len(samples), 2)]
     elif nch != 1:
         raise SystemExit(f"unsupported channels: {nch}")
-    return rate, samples
+    return rate, list(samples)
 
 
 def resample(rate, samples, out_rate=16000):
@@ -85,7 +85,7 @@ def append_fade_out(samples, rate=16000, fade_ms=15):
     fade_n = min(int(rate * fade_ms / 1000), len(samples))
     if fade_n <= 1:
         return samples
-    out = samples[:-fade_n]
+    out = list(samples[:-fade_n])
     start = len(samples) - fade_n
     for i in range(fade_n):
         factor = 1.0 - (i + 1) / fade_n

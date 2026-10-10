@@ -82,9 +82,10 @@ async def open_arecord(
     channels: int = 1,
     period_size: int = 320,
     buffer_size: int = 2560,
+    pasuspender: bool = False,
 ) -> asyncio.subprocess.Process:
     # Larger ALSA buffer reduces underrun gaps when the asyncio loop stalls briefly.
-    return await asyncio.create_subprocess_exec(
+    arecord_cmd = [
         "arecord",
         "-q",
         "-D",
@@ -101,6 +102,10 @@ async def open_arecord(
         str(buffer_size),
         "-t",
         "raw",
+    ]
+    cmd = ["pasuspender", "--", *arecord_cmd] if pasuspender else arecord_cmd
+    return await asyncio.create_subprocess_exec(
+        *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

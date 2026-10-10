@@ -1,0 +1,17 @@
+[Unit]
+Description=Keep adb gadget up while FY-SP701 USB mic is connected
+After=usbdevice.service local-fs.target
+Wants=usbdevice.service
+ConditionPathExists=/usr/bin/usbdevice
+
+[Service]
+Type=simple
+Environment=AGENT_ROOT=/userdata/agent
+Environment=ADB_GUARD_INTERVAL_SEC=8
+Environment=ADB_BOOT_GRACE_SEC=90
+ExecStart=/bin/bash /userdata/agent/scripts/adb_guard_loop.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

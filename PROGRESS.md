@@ -1,6 +1,6 @@
 # youyeetoo R1 + RM1828 项目进展
 
-> 最后更新：2026-08-27  
+> 最后更新：2026-08-28  
 > 板端：R1 · Ubuntu 22.04 · kernel 5.10.110 **#12**  
 > 加速卡：RK1828 · FW/API **1.0.5b10**
 
@@ -145,11 +145,15 @@ bash /userdata/p4/scripts/p4_loop.sh 3
 | HDMI 全屏 GUI（Chromium :8766 · WS :8765） | ✅ |
 | 登录自启 GUI + 桌面图标 + 科技风壁纸 | ✅ |
 | 大屏布局：标题「语音助手」· 紧凑状态栏 | ✅ |
+| FY-SP701 USB 麦 + adb 调试口共存 | ✅ [`docs/ADB_SP701_COEXIST.md`](agent/docs/ADB_SP701_COEXIST.md) |
 
 ```bash
 # PC 推送 + 安装
 powershell -File agent/scripts/push_agent.ps1
 adb shell sudo bash /userdata/agent/scripts/install_autostart.sh
+
+# SP701 + adb 共存（板端）
+sudo bash /userdata/agent/scripts/install_usb_adb_mic_boot.sh
 
 # 手动打开 GUI
 bash /userdata/agent/scripts/open_agent_gui.sh
@@ -164,3 +168,14 @@ bash /userdata/agent/scripts/open_agent_gui.sh
 - [ ] P5b：VLM spike → 统一 vlm_daemon / see()
 - [ ] P5：InternVL chat template · llm_daemon 重编
 - [ ] DTS 持久化 `hugepages=160`
+---
+
+## 项目文档与网页整理（2026-10-09）
+
+- 新增根目录 `README.md`：结构、架构、部署、资源边界与阶段进度。
+- 新增 `docs/site/` 交互式项目介绍：架构节点、模块入口、阶段筛选与展开。
+- GitHub Pages 工作流只发布 `docs/site/`，与板端 `agent/ui/` 实时控制面板独立。
+- 整理当前工作区实现：音频 / 系统调试面板、录音回放与直通、WiFi AP 局域网访问。
+- 本轮为源码与文档整理，不更新历史硬件验收日期或性能结果。
+- 当前正常回答在完整生成与清洗后才进入 TTS；token 流式显示不代表全链路流式首响。
+- `agent/vision/` 尚未实现；RTSP 原型的取帧目标 1fps 不代表 VLM 每秒输出一次描述。

@@ -8,7 +8,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
-from asr.audio_util import collect_stream_prefix, int16_bytes_to_float32, read_wav_float32
+from asr.audio_util import collect_stream_prefix, collect_stream_suffix, int16_bytes_to_float32, read_wav_float32
 from asr.mic_capture import arm_mic, mic_route_guard, open_arecord
 from asr.sherpa_vad import SherpaVad, SherpaVadError
 
@@ -32,15 +32,24 @@ class VadConfig:
     min_speech_duration: float = 0.25
     max_speech_duration: float = 30.0
     alsa_device: str = "plughw:0,0"
+    capture_channels: int = 1
     min_segment_sec: float = 0.5
     speech_preroll_ms: int = 400
+    speech_tail_pad_ms: int = 0
     arecord_period_size: int = 320
     arecord_buffer_size: int = 2560
     mic_capture_gain: int = 6
+    mic_arm: bool = True
+    route_guard: bool = True
+    pasuspender: bool = False
 
     @property
     def chunk_samples(self) -> int:
         return int(self.sample_rate * self.chunk_ms / 1000)
+
+    @property
+    def tail_pad_samples(self) -> int:
+        return int(self.sample_rate * self.speech_tail_pad_ms / 1000)
 
     @property
     def preroll_samples(self) -> int:
@@ -80,26 +89,40 @@ class VadStream:
             max_samples=self.cfg.preroll_samples,
         )
 
+    def _suffix_after(self, begin_index: int) -> list[float]:
+        chunks = [(c.start, c.samples) for c in self._history]
+        return collect_stream_suffix(
+            chunks,
+            begin_index,
+            max_samples=self.cfg.tail_pad_samples,
+        )
+
     def stop(self) -> None:
         self._stop.set()
 
     async def run_live(self) -> None:
-        arm_mic(mic_gain=self.cfg.mic_capture_gain)
+        guard_task: asyncio.Task[None] | None = None
         guard_stop = asyncio.Event()
-        guard_task = asyncio.create_task(
-            mic_route_guard(guard_stop, mic_gain=self.cfg.mic_capture_gain)
-        )
+        if self.cfg.mic_arm:
+            arm_mic(mic_gain=self.cfg.mic_capture_gain)
+        if self.cfg.route_guard:
+            guard_task = asyncio.create_task(
+                mic_route_guard(guard_stop, mic_gain=self.cfg.mic_capture_gain)
+            )
         proc = await open_arecord(
             device=self.cfg.alsa_device,
             sample_rate=self.cfg.sample_rate,
+            channels=self.cfg.capture_channels,
             period_size=self.cfg.arecord_period_size,
             buffer_size=self.cfg.arecord_buffer_size,
+            pasuspender=self.cfg.pasuspender,
         )
         try:
             await self._consume_arecord(proc)
         finally:
             guard_stop.set()
-            await guard_task
+            if guard_task is not None:
+                await guard_task
             if proc.returncode is None:
                 proc.terminate()
                 await proc.wait()
@@ -171,6 +194,15 @@ class VadStream:
             elif kind == "segment" and payload is not None:
                 prefix = self._prefix_before(payload.start)
                 segment = prefix + list(payload.samples)
+                end_index = payload.start + len(payload.samples)
+                if self.cfg.speech_tail_pad_ms > 0:
+                    tail = self._suffix_after(end_index)
+                    if tail:
+                        segment.extend(tail)
+                        LOG.debug(
+                            "[vad] tail +%.0fms after segment",
+                            1000 * len(tail) / self.cfg.sample_rate,
+                        )
                 duration_sec = len(segment) / self.cfg.sample_rate
                 if duration_sec < self.cfg.min_segment_sec:
                     LOG.debug("[vad] drop short segment %.2fs", duration_sec)

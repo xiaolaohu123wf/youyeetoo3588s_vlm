@@ -6,10 +6,10 @@ TRIES="${MIC_ARM_TRIES:-10}"
 INTER="${MIC_ARM_INTERVAL:-0.06}"
 TRIES="${TRIES//$'\r'/}"
 INTER="${INTER//$'\r'/}"
-ROUTE="${ROUTE//$'\r'/}"
 
 source /userdata/voice/scripts/voice_env.sh 2>/dev/null || true
 ROUTE="${MIC_ROUTE:-main_board}"
+ROUTE="${ROUTE//$'\r'/}"
 
 for _ in $(seq 1 "${TRIES}"); do
   bash /userdata/voice/scripts/mic_setup.sh "${CARD}" >/dev/null 2>&1 || true
