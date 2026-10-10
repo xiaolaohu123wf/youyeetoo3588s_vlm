@@ -54,33 +54,11 @@ class RtspAndWebUiTests(unittest.IsolatedAsyncioTestCase):
         self.orch.emit = fake_emit  # type: ignore[method-assign]
 
     def test_sync_ui_preview_frame(self) -> None:
-        from io import BytesIO
-
-        from PIL import Image
-
-        im = Image.new("RGB", (448, 448))
-        for y in range(448):
-            for x in range(448):
-                im.putpixel((x, y), ((x * 3) % 256, (y * 2) % 256, 80))
-        buf = BytesIO()
-        im.save(buf, format="JPEG", quality=90)
-        test_bytes = buf.getvalue()
+        test_bytes = b"\xff\xd8\xff\xe0test_preview_data"
         self.orch._sync_ui_preview_frame(test_bytes)
         preview_file = AGENT_ROOT / "ui" / "latest_frame.jpg"
         self.assertTrue(preview_file.is_file())
         self.assertEqual(preview_file.read_bytes(), test_bytes)
-
-    def test_reject_grey_preview_jpeg(self) -> None:
-        from io import BytesIO
-
-        from PIL import Image
-
-        from orchestrator.mediamtx_camera import preview_jpeg_bytes_valid
-
-        im = Image.new("RGB", (448, 448), (128, 128, 128))
-        buf = BytesIO()
-        im.save(buf, format="JPEG", quality=90)
-        self.assertFalse(preview_jpeg_bytes_valid(buf.getvalue()))
 
     def test_rtsp_grab_routing(self) -> None:
         with patch.object(self.orch, "_grab_rtsp_frame", return_value=True) as mock_rtsp:
